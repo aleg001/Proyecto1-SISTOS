@@ -1,0 +1,52 @@
+syntax = "proto3";
+package chat;
+
+message UserList {
+    bool list = 1;
+    string user_name = 2;
+}
+
+message UsersOnline{
+    repeated User users = 1;
+}
+
+message UserOption{
+    int32 op = 1;
+    NewUser createUser = 2;
+    UserList userList = 3;
+    Status status = 4;
+    Message message = 5;
+}
+
+message Answer{
+    int32 op = 1;
+    int32 response_status_code = 2;
+    string response_message = 3;
+    UsersOnline users_online = 4;
+    Message message = 5;
+    User user = 6;
+    Status status = 7;
+}
+
+message User{
+    string user_name = 1;
+    string user_ip = 2;
+    int32 user_state = 3;
+}
+
+message NewUser {
+    string username = 1;
+    string IP = 2;
+}
+
+message Status{
+    string user_name = 1;
+    int32 user_state = 2;
+}
+
+message Message {
+    bool message_private = 1;
+    string message_destination = 2;
+    string message_content = 3;
+    string message_sender = 4;
+}
