@@ -36,7 +36,7 @@ void* handle_newclient(void *arg){
         exit(EXIT_FAILURE);
     } else {
         // Se crea un nuevo usuario en el server para manejar mejor la informacion
-        Chat__User* new_client = chat__new_user__unpack(NULL, bytes_received, buffer); 
+        ChatSistOS__NewUser* new_client = chat_sist_os__new_user__unpack(NULL, bytes_received, buffer); 
 
         if(new_client == NULL){
             perror("[SERVER-ERROR]: Registro de usuario fallido\n");
@@ -44,15 +44,15 @@ void* handle_newclient(void *arg){
         }
 
         // Se imprime informacion y se libera memoria
-        printf("Bienvenido: %s de ip: %s\n", new_client->user_name, new_client->user_ip);
+        printf("Bienvenido: %s de ip: %s\n", new_client->username, new_client->ip);
 
         // Respuesta del servidor
         
 
         // Se agrega el nuevo cliente a la lista
         Client client;
-        strcpy(client.username, new_client->user_name);
-        strcpy(client.user_ip, new_client->user_ip);
+        strcpy(client.username, new_client->username);
+        strcpy(client.user_ip, new_client->ip);
         client.status = 1;
         client.sockfd = client_socket;
 
@@ -63,7 +63,7 @@ void* handle_newclient(void *arg){
         for (int i = 0; i < cantidad_clientes; i++) {
             printf("- %s (%s)\n", clients[i].username, clients[i].user_ip);
         }
-        chat__new_user__free_unpacked(new_client, NULL);
+        chat_sist_os__new_user__free_unpacked(new_client, NULL);
     }
 }
 
