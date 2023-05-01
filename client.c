@@ -124,7 +124,8 @@ int main(int argc, const char **argv)
         // Obtener la dirección IP del cliente
         struct sockaddr_in addr;
         socklen_t len = sizeof(addr);
-        if (getsockname(cliente_fd, (struct sockaddr *)&addr, &len) == -1) {
+        if (getsockname(cliente_fd, (struct sockaddr *)&addr, &len) == -1)
+        {
             perror("[CLIENT-ERROR]: Obtención de dirección IP del cliente fallida\n");
             exit(EXIT_FAILURE);
         }
@@ -137,7 +138,8 @@ int main(int argc, const char **argv)
         uint8_t *buffer_tx = malloc(package_size);
         chat_sist_os__new_user__pack(&new_client, buffer_tx);
 
-        if(send(cliente_fd, buffer_tx, package_size, 0) < 0){
+        if (send(cliente_fd, buffer_tx, package_size, 0) < 0)
+        {
             ERRORMensaje("[CLIENT-ERROR]: Envio de mensaje fallido\n");
         }
 
@@ -145,25 +147,29 @@ int main(int argc, const char **argv)
 
         uint8_t buffer_rx[1024];
         ssize_t bytesRecibidos = recv(cliente_fd, buffer_rx, 1024, 0);
-        if(bytesRecibidos < 0){
+        if (bytesRecibidos < 0)
+        {
             ERRORMensaje("[CLIENT-ERROR]: Recepcion de respuesta fallida\n");
         }
 
         // Se obtiene el mensaje del servidor
         ChatSistOS__Answer *answer = chat_sist_os__answer__unpack(NULL, bytesRecibidos, buffer_rx);
-        if (answer == NULL) {
+        if (answer == NULL)
+        {
             printf("ERROR: No se pudo desempaquetar el mensaje recibido\n");
-            return -1;  
+            return -1;
         }
-        printf("[SERVER (%d)]->[%s]: %s\n",answer->response_status_code, answer->user->user_name, answer->response_message);
+        printf("[SERVER (%d)]->[%s]: %s\n", answer->response_status_code, answer->user->user_name, answer->response_message);
 
-        if(answer->response_status_code != 400){
+        if (answer->response_status_code != 400)
+        {
             int veri = 1;
             while (veri)
             {
                 MENU();
                 printf("\nIngrese comando: ");
-                if (fgets(input, sizeof(input), stdin) == NULL) {
+                if (fgets(input, sizeof(input), stdin) == NULL)
+                {
                     continue;
                 }
                 input[strcspn(input, "\r\n")] = '\0';
@@ -172,7 +178,7 @@ int main(int argc, const char **argv)
                 {
                     continue;
                 }
-                
+
                 int opcion = atoi(input);
                 uint8_t bufferExit = 1;
 
@@ -183,173 +189,191 @@ int main(int argc, const char **argv)
                 uint8_t *buffer_option = malloc(package_size);
                 chat_sist_os__user_option__pack(&option_user, buffer_option);
 
-                if(send(cliente_fd, buffer_option, package_size, 0) < 0){
+                if (send(cliente_fd, buffer_option, package_size, 0) < 0)
+                {
                     ERRORMensaje("[CLIENT-ERROR]: Envio de opcion fallido\n");
                 }
 
                 free(buffer_option);
 
-                switch (opcion){
-                    case OP_CHAT:
-                        printf("Mensaje general\n\n");
-                        // char *txt_mensaje = strtok(NULL, "");
-                        // if (txt_mensaje == NULL)
-                        // {
-                        //     printf("FORMATO INCORRECTO\n");
-                        //     continue;
-                        // }
-                        // ChatSistOS__Message chat_message = CHAT_SIST_OS__MESSAGE__INIT;
-                        // chat_message.message_private = 0;
-                        // chat_message.message_destination = "";
-                        // chat_message.message_content = txt_mensaje;
-                        // chat_message.message_sender = username;
-                        // size_t serializado = chat_sist_os__message__get_packed_size(&chat_message);
-                        // uint8_t *buffer = malloc(serializado);
-                        // chat_sist_os__message__pack(&chat_message, buffer);
-                        // if (send(cliente_fd, buffer, serializado, 0) < 0)
-                        // {
-                        //     ERRORMensaje("ERROR: Envio de mensaje fallido\n");
-                        // }
-                        // else
-                        // {
-                        //     free(buffer);
-                        //     printf("[CLIENT]: Mensaje enviado\n");
-                        // }
-                        // continue;
-                        break;
-                    case OP_DM:
-                        printf("Mensaje privado\n\n");
-                        // char *usuarioname = strtok(NULL, " ");
-                        // if (usuarioname == NULL)
-                        // {
-                        //     printf("FORMATO INCORRECTO\n");
-                        //     continue;
-                        // }
-                        // char *txt_mensaje = strtok(NULL, "");
-                        // if (txt_mensaje == NULL)
-                        // {
-                        //     printf("FORMATO INCORRECTO\n");
-                        //     continue;
-                        // }
+                switch (opcion)
+                {
+                case OP_CHAT:
+                    printf("Mensaje general\n\n");
 
-                        // ChatSistOS__Message dm_message = CHAT_SIST_OS__MESSAGE__INIT;
-                        // dm_message.message_private = 1;
-                        // dm_message.message_destination = usuarioname;
-                        // dm_message.message_content = txt_mensaje;
-                        // dm_message.message_sender = username;
+                    if (fgets(input, sizeof(input), stdin) == NULL)
+                    {
+                        printf("FORMATO INCORRECTO\n");
+                        continue;
+                    }
+                    input[strcspn(input, "\n")] = '\0';
 
-                        // size_t dm_message_size = chat_sist_os__message__get_packed_size(&dm_message);
-                        // uint8_t *dm_message_buffer = malloc(dm_message_size);
-                        // chat_sist_os__message__pack(&dm_message, dm_message_buffer);
+                    char *txt_mensaje = strtok(input, " ");
+                    txt_mensaje = strtok(NULL, "");
 
-                        // if (send(cliente_fd, dm_message_buffer, dm_message_size, 0) < 0)
-                        // {
-                        //     ERRORMensaje("ERROR: Envio de mensaje fallido\n");
-                        // }
-                        // else
-                        // {
-                        //     free(dm_message_buffer);
-                        //     printf("[CLIENT]: Mensaje enviado\n");
-                        // }
-                        break;
-                    case OP_STATUS:
-                        printf("Status\n\n");
-                        // char *status_str = strtok(NULL, " ");
-                        // if (status_str == NULL)
-                        // {
-                        //     printf("FORMATO INVALIDO DE ESTADO\n");
-                        //     continue;
-                        // }
-                        // int status = atoi(status_str);
-                        // if (status < 0 || status > 2)
-                        // {
-                        //     printf("Estados pueden ser 0, 1 y 2\n");
-                        //     continue;
-                        // }
+                    printf("Mensaje: %s\n", txt_mensaje);
 
-                        // ChatSistOS__Status status_update = CHAT_SIST_OS__STATUS__INIT;
-                        // status_update.user_name = username;
-                        // status_update.user_state = status;
+                    if (txt_mensaje == NULL)
+                    {
+                        printf("FORMATO INCORRECTO\n");
+                        continue;
+                    }
 
-                        // size_t status_update_size = chat_sist_os__status__get_packed_size(&status_update);
-                        // uint8_t *status_update_buffer = malloc(status_update_size);
-                        // chat_sist_os__status__pack(&status_update, status_update_buffer);
+                    ChatSistOS__Message chat_message = CHAT_SIST_OS__MESSAGE__INIT;
+                    chat_message.message_private = 0;
+                    chat_message.message_destination = "";
+                    chat_message.message_content = txt_mensaje;
+                    chat_message.message_sender = username;
 
-                        // if (send(cliente_fd, status_update_buffer, status_update_size, 0) < 0)
-                        // {
-                        //     ERRORMensaje("ERROR: Envio de estado fallido\n");
-                        // }
-                        // else
-                        // {
-                        //     free(status_update_buffer);
-                        //     printf("[CLIENT]: Estado actualizado\n");
-                        // }
-                        break;
+                    size_t serializado = chat_sist_os__message__get_packed_size(&chat_message);
+                    uint8_t *buffer = malloc(serializado);
+                    chat_sist_os__message__pack(&chat_message, buffer);
 
-                    case OP_USUARIOS:
-                        printf("Listado usuarios\n\n");
-                        // ChatSistOS__UserList user_list_request = CHAT_SIST_OS__USER_LIST__INIT;
-                        // user_list_request.list = 1;
-                        // user_list_request.user_name = "";
+                    if (send(cliente_fd, buffer, serializado, 0) < 0)
+                    {
+                        ERRORMensaje("ERROR: Envio de mensaje fallido\n");
+                    }
+                    else
+                    {
+                        free(buffer);
+                        printf("[CLIENT]: Mensaje enviado\n");
+                    }
+                    continue;
+                    break;
 
-                        // size_t user_list_request_size = chat_sist_os__user_list__get_packed_size(&user_list_request);
-                        // uint8_t *user_list_request_buffer = malloc(user_list_request_size);
-                        // chat_sist_os__user_list__pack(&user_list_request, user_list_request_buffer);
+                case OP_DM:
+                    printf("Mensaje privado\n\n");
+                    // char *usuarioname = strtok(NULL, " ");
+                    // if (usuarioname == NULL)
+                    // {
+                    //     printf("FORMATO INCORRECTO\n");
+                    //     continue;
+                    // }
+                    // char *txt_mensaje = strtok(NULL, "");
+                    // if (txt_mensaje == NULL)
+                    // {
+                    //     printf("FORMATO INCORRECTO\n");
+                    //     continue;
+                    // }
 
-                        // if (send(cliente_fd, user_list_request_buffer, user_list_request_size, 0) < 0)
-                        // {
-                        //     ERRORMensaje("ERROR: Envio de lista de usuarios fallido\n");
-                        // }
-                        // else
-                        // {
-                        //     free(user_list_request_buffer);
-                        //     printf("[CLIENT]: Solicitud de lista de usuarios enviada\n");
-                        // }
-                        break;
-                    case OP_USUARIO:
-                        printf("Informacion usuario\n\n");
-                        // char *usuarioname = strtok(NULL, " ");
-                        // if (usuarioname == NULL)
-                        // {
-                        //     printf("FORMATO INVALIDO DE USUARIO\n");
-                        //     continue;
-                        // }
+                    // ChatSistOS__Message dm_message = CHAT_SIST_OS__MESSAGE__INIT;
+                    // dm_message.message_private = 1;
+                    // dm_message.message_destination = usuarioname;
+                    // dm_message.message_content = txt_mensaje;
+                    // dm_message.message_sender = username;
 
-                        // ChatSistOS__UserList user_info_request = CHAT_SIST_OS__USER_LIST__INIT;
-                        // user_info_request.list = 0;
-                        // user_info_request.user_name = usuarioname;
+                    // size_t dm_message_size = chat_sist_os__message__get_packed_size(&dm_message);
+                    // uint8_t *dm_message_buffer = malloc(dm_message_size);
+                    // chat_sist_os__message__pack(&dm_message, dm_message_buffer);
 
-                        // size_t user_info_request_size = chat_sist_os__user_list__get_packed_size(&user_info_request);
-                        // uint8_t *user_info_request_buffer = malloc(user_info_request_size);
-                        // chat_sist_os__user_list__pack(&user_info_request, user_info_request_buffer);
+                    // if (send(cliente_fd, dm_message_buffer, dm_message_size, 0) < 0)
+                    // {
+                    //     ERRORMensaje("ERROR: Envio de mensaje fallido\n");
+                    // }
+                    // else
+                    // {
+                    //     free(dm_message_buffer);
+                    //     printf("[CLIENT]: Mensaje enviado\n");
+                    // }
+                    break;
+                case OP_STATUS:
+                    printf("Status\n\n");
+                    // char *status_str = strtok(NULL, " ");
+                    // if (status_str == NULL)
+                    // {
+                    //     printf("FORMATO INVALIDO DE ESTADO\n");
+                    //     continue;
+                    // }
+                    // int status = atoi(status_str);
+                    // if (status < 0 || status > 2)
+                    // {
+                    //     printf("Estados pueden ser 0, 1 y 2\n");
+                    //     continue;
+                    // }
 
-                        // if (send(cliente_fd, user_info_request_buffer, user_info_request_size, 0) < 0)
-                        // {
-                        //     ERRORMensaje("ERROR: Envio de informacion de usuario fallido\n");
-                        // }
-                        // else
-                        // {
-                        //     free(user_info_request_buffer);
-                        //     printf("[CLIENT]: Solicitud de informacion de usuario enviada\n");
-                        // }
-                        break;
-                    case OP_HELP:
-                        printf("Ayuda\n\n");
-                        AYUDA();
-                        break;
-                    case OP_EXIT:
-                        printf("Salir\n\n");
-                        // if (send(cliente_fd, &bufferExit, sizeof(bufferExit), 0) < 0)
-                        // {
-                        //     ERRORMensaje("ERROR SALIENDO");
-                        // }
-                        // printf("Saliendo...\n");
-                        // close(cliente_fd);
-                        veri=0;
-                        break;
-                    default:
-                        printf("Comando INVALIDO, escribe 'help' pa q te ayudemos\n");
-                        break;
+                    // ChatSistOS__Status status_update = CHAT_SIST_OS__STATUS__INIT;
+                    // status_update.user_name = username;
+                    // status_update.user_state = status;
+
+                    // size_t status_update_size = chat_sist_os__status__get_packed_size(&status_update);
+                    // uint8_t *status_update_buffer = malloc(status_update_size);
+                    // chat_sist_os__status__pack(&status_update, status_update_buffer);
+
+                    // if (send(cliente_fd, status_update_buffer, status_update_size, 0) < 0)
+                    // {
+                    //     ERRORMensaje("ERROR: Envio de estado fallido\n");
+                    // }
+                    // else
+                    // {
+                    //     free(status_update_buffer);
+                    //     printf("[CLIENT]: Estado actualizado\n");
+                    // }
+                    break;
+
+                case OP_USUARIOS:
+                    printf("Listado usuarios\n\n");
+                    // ChatSistOS__UserList user_list_request = CHAT_SIST_OS__USER_LIST__INIT;
+                    // user_list_request.list = 1;
+                    // user_list_request.user_name = "";
+
+                    // size_t user_list_request_size = chat_sist_os__user_list__get_packed_size(&user_list_request);
+                    // uint8_t *user_list_request_buffer = malloc(user_list_request_size);
+                    // chat_sist_os__user_list__pack(&user_list_request, user_list_request_buffer);
+
+                    // if (send(cliente_fd, user_list_request_buffer, user_list_request_size, 0) < 0)
+                    // {
+                    //     ERRORMensaje("ERROR: Envio de lista de usuarios fallido\n");
+                    // }
+                    // else
+                    // {
+                    //     free(user_list_request_buffer);
+                    //     printf("[CLIENT]: Solicitud de lista de usuarios enviada\n");
+                    // }
+                    break;
+                case OP_USUARIO:
+                    printf("Informacion usuario\n\n");
+                    // char *usuarioname = strtok(NULL, " ");
+                    // if (usuarioname == NULL)
+                    // {
+                    //     printf("FORMATO INVALIDO DE USUARIO\n");
+                    //     continue;
+                    // }
+
+                    // ChatSistOS__UserList user_info_request = CHAT_SIST_OS__USER_LIST__INIT;
+                    // user_info_request.list = 0;
+                    // user_info_request.user_name = usuarioname;
+
+                    // size_t user_info_request_size = chat_sist_os__user_list__get_packed_size(&user_info_request);
+                    // uint8_t *user_info_request_buffer = malloc(user_info_request_size);
+                    // chat_sist_os__user_list__pack(&user_info_request, user_info_request_buffer);
+
+                    // if (send(cliente_fd, user_info_request_buffer, user_info_request_size, 0) < 0)
+                    // {
+                    //     ERRORMensaje("ERROR: Envio de informacion de usuario fallido\n");
+                    // }
+                    // else
+                    // {
+                    //     free(user_info_request_buffer);
+                    //     printf("[CLIENT]: Solicitud de informacion de usuario enviada\n");
+                    // }
+                    break;
+                case OP_HELP:
+                    printf("Ayuda\n\n");
+                    AYUDA();
+                    break;
+                case OP_EXIT:
+                    printf("Salir\n\n");
+                    // if (send(cliente_fd, &bufferExit, sizeof(bufferExit), 0) < 0)
+                    // {
+                    //     ERRORMensaje("ERROR SALIENDO");
+                    // }
+                    // printf("Saliendo...\n");
+                    // close(cliente_fd);
+                    veri = 0;
+                    break;
+                default:
+                    printf("Comando INVALIDO, escribe 'help' pa q te ayudemos\n");
+                    break;
 
                     // write(cliente_fd, buffer_tx, sizeof(buffer_tx));
                     // read(cliente_fd, buffer_rx, sizeof(buffer_rx));
