@@ -150,18 +150,14 @@ int main(int argc, const char **argv)
         }
 
         // Se obtiene el mensaje del servidor
-        ChatSistOS__Message *chat_message = chat_sist_os__message__unpack(NULL, bytesRecibidos, buffer_rx);
-        
-        if (chat_message == NULL) {
+        ChatSistOS__Answer *answer = chat_sist_os__answer__unpack(NULL, bytesRecibidos, buffer_rx);
+        if (answer == NULL) {
             printf("ERROR: No se pudo desempaquetar el mensaje recibido\n");
             return -1;  
         }
-        // Se muestra el contenido del mensaje de respuesta
-        if(chat_message->message_private == 1){
-            printf("[%s]->[%s]: %s\n", chat_message->message_sender, chat_message->message_destination, chat_message->message_content);
-        }
+        printf("[SERVER (%d)]->[%s]: %s\n",answer->response_status_code, answer->user->user_name, answer->response_message);
 
-        if(strcmp(chat_message->message_content, "Usuario ya registrado") != 0){
+        if(answer->response_status_code != 400){
             int veri = 1;
             while (veri)
             {
@@ -361,7 +357,7 @@ int main(int argc, const char **argv)
                 }
             }
         }
-        chat_sist_os__message__free_unpacked(chat_message, NULL);
+        chat_sist_os__answer__free_unpacked(answer, NULL);
         return EXIT_SUCCESS;
     }
     else

@@ -99,27 +99,31 @@ void* handle_newclient(void *arg){
         user.status = 1;
         user.sockfd = client_socket;
 
+        ChatSistOS__User user_response = CHAT_SIST_OS__USER__INIT;
+        user_response.user_name = user.username;
+        user_response.user_ip = user.user_ip;
+        user_response.user_state = user.status;
+
         int user_exist = check_users(new_client->username, new_client->ip);
         if(user_exist == 0){
             clients[cantidad_clientes] = user;
             cantidad_clientes++;
             // Respuesta de registro
-            ChatSistOS__Message response = CHAT_SIST_OS__MESSAGE__INIT;
-            response.message_sender = "SERVER";
-            response.message_private = 1;
-            response.message_destination = new_client->username;
-            response.message_content = "Usuario registrado";
+            ChatSistOS__Answer answer = CHAT_SIST_OS__ANSWER__INIT;
+            answer.response_status_code = 200;
+            answer.response_message = "Usuario registrado";
+            answer.user = &user_response;
 
-            size_t package_size = chat_sist_os__message__get_packed_size(&response);
-            uint8_t *buffer_envio = malloc(package_size);
-            chat_sist_os__message__pack(&response, buffer_envio);
+            size_t package_size = chat_sist_os__answer__get_packed_size(&answer);
+            uint8_t *buffer_envioA = malloc(package_size);
+            chat_sist_os__answer__pack(&answer, buffer_envioA);
 
-            if(send(client_socket, buffer_envio, package_size, 0) < 0){
+            if(send(client_socket, buffer_envioA, package_size, 0) < 0){
                 perror("[SERVER-ERROR]: Envio de respuesta fallido\n");
                 exit(EXIT_FAILURE);
             }
 
-            free(buffer_envio);
+            free(buffer_envioA);
             chat_sist_os__new_user__free_unpacked(new_client, NULL);
         
             while(1){
@@ -134,7 +138,7 @@ void* handle_newclient(void *arg){
                 ChatSistOS__UserOption *user_option = chat_sist_os__user_option__unpack(NULL, bytesRecibidos, buffer_option);
                 printf("Opcion ingresada: %d\n",user_option->op);
 
-                
+                // Manejar opciones
 
                 if (user_option == NULL || user_option->op == 7 || user_option->op == 0) {
                     int index = search_user(user.username, user.user_ip);
@@ -148,22 +152,21 @@ void* handle_newclient(void *arg){
             }
         } else {
             // Respuesta de registro
-            ChatSistOS__Message response = CHAT_SIST_OS__MESSAGE__INIT;
-            response.message_sender = "SERVER";
-            response.message_private = 1;
-            response.message_destination = new_client->username;
-            response.message_content = "Usuario ya registrado";
+            ChatSistOS__Answer answer = CHAT_SIST_OS__ANSWER__INIT;
+            answer.response_status_code = 400;
+            answer.response_message = "Usuario ya registrado";
+            answer.user = &user_response;
 
-            size_t package_size = chat_sist_os__message__get_packed_size(&response);
-            uint8_t *buffer_envio = malloc(package_size);
-            chat_sist_os__message__pack(&response, buffer_envio);
+            size_t package_size = chat_sist_os__answer__get_packed_size(&answer);
+            uint8_t *buffer_envioB = malloc(package_size);
+            chat_sist_os__answer__pack(&answer, buffer_envioB);
 
-            if(send(client_socket, buffer_envio, package_size, 0) < 0){
+            if(send(client_socket, buffer_envioB, package_size, 0) < 0){
                 perror("[SERVER-ERROR]: Envio de respuesta fallido\n");
                 exit(EXIT_FAILURE);
             }
 
-            free(buffer_envio);
+            free(buffer_envioB);
             chat_sist_os__new_user__free_unpacked(new_client, NULL);
 
         }
@@ -230,7 +233,10 @@ int main(int argc, char **argv) {
         }
 
         while (1) {
-            listado_clientes();
+            
+            // Imprimir listado de clientes activos
+            // listado_clientes();
+            
             client_fd = accept(server_fd, (struct sockaddr *)&client, (socklen_t*)&addrlenclient);
             if (client_fd < 0) {
                 perror("[SERVER-ERROR]: Conexion no aceptada\n");
