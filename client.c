@@ -243,39 +243,51 @@ int main(int argc, const char **argv)
 
                 case OP_DM:
                     printf("Mensaje privado\n\n");
-                    // char *usuarioname = strtok(NULL, " ");
-                    // if (usuarioname == NULL)
-                    // {
-                    //     printf("FORMATO INCORRECTO\n");
-                    //     continue;
-                    // }
-                    // char *txt_mensaje = strtok(NULL, "");
-                    // if (txt_mensaje == NULL)
-                    // {
-                    //     printf("FORMATO INCORRECTO\n");
-                    //     continue;
-                    // }
+                    if (fgets(input, sizeof(input), stdin) == NULL)
+                    {
+                        printf("FORMATO INCORRECTO\n");
+                        continue;
+                    }
+                    input[strcspn(input, "\n")] = '\0';
 
-                    // ChatSistOS__Message dm_message = CHAT_SIST_OS__MESSAGE__INIT;
-                    // dm_message.message_private = 1;
-                    // dm_message.message_destination = usuarioname;
-                    // dm_message.message_content = txt_mensaje;
-                    // dm_message.message_sender = username;
+                    char *usuarioname = strtok(input, " ");
+                    if (usuarioname == NULL)
+                    {
+                        printf("FORMATO INCORRECTO\n");
+                        continue;
+                    }
+                    char *dm_mensaje = strtok(NULL, "");
+                    if (dm_mensaje == NULL)
+                    {
+                        printf("FORMATO INCORRECTO\n");
+                        continue;
+                    }
 
-                    // size_t dm_message_size = chat_sist_os__message__get_packed_size(&dm_message);
-                    // uint8_t *dm_message_buffer = malloc(dm_message_size);
-                    // chat_sist_os__message__pack(&dm_message, dm_message_buffer);
+                    ChatSistOS__Message dm_message = CHAT_SIST_OS__MESSAGE__INIT;
+                    dm_message.message_private = 1;
+                    dm_message.message_destination = usuarioname;
+                    dm_message.message_content = dm_mensaje;
+                    dm_message.message_sender = username;
 
-                    // if (send(cliente_fd, dm_message_buffer, dm_message_size, 0) < 0)
-                    // {
-                    //     ERRORMensaje("ERROR: Envio de mensaje fallido\n");
-                    // }
-                    // else
-                    // {
-                    //     free(dm_message_buffer);
-                    //     printf("[CLIENT]: Mensaje enviado\n");
-                    // }
-                    break;
+                    size_t dm_message_size = chat_sist_os__message__get_packed_size(&dm_message);
+                    uint8_t *dm_message_buffer = malloc(dm_message_size);
+                    chat_sist_os__message__pack(&dm_message, dm_message_buffer);
+
+                    printf("Mensaje: %s\n", dm_mensaje);
+                    printf("Destinatario: %s\n", usuarioname);
+
+                    if (send(cliente_fd, dm_message_buffer, dm_message_size, 0) < 0)
+                    {
+                        ERRORMensaje("ERROR: Envio de mensaje fallido\n");
+                        continue;
+                    }
+                    else
+                    {
+                        free(dm_message_buffer);
+                        printf("[CLIENT]: Mensaje enviado\n");
+                        continue;
+                    }
+
                 case OP_STATUS:
                     printf("Status\n\n");
                     // char *status_str = strtok(NULL, " ");
