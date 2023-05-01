@@ -7,6 +7,8 @@
 #include <sys/socket.h> //Sockets de red
 #include <netinet/in.h> //Direcciones de red
 #include <pthread.h> //Hilos
+#include <arpa/inet.h> // Manipulacion direcciones IP
+#include "chat.pb-c.h" // Protobuf
 
 //ip vm: 10.0.2.15
 
@@ -25,7 +27,7 @@ int main(int argc, char **argv) {
         char buffer_tx[1024];
         char buffer_rx[1024];
 
-        // Creating socket file descriptor
+        // Socket del cliente
         sockfd = socket(AF_INET, SOCK_STREAM, 0);
         if (sockfd < 0) {
             perror("[CLIENT-ERROR]: Creacion de socket fallida\n");
@@ -47,27 +49,42 @@ int main(int argc, char **argv) {
             printf("[CLIENT]: Conectado al servidor exitosamente\n");
         }
 
-        sprintf(buffer_tx, "El usuario %s se conecto", username);
-        write(sockfd, buffer_tx, sizeof(buffer_tx));
-        read(sockfd, buffer_rx, sizeof(buffer_rx));
-        printf("[CLIENT]: %s \n", buffer_rx);
-
-        while (1) {
-            printf("Ingrese un mensaje: ");
-            fgets(buffer_tx, 1024, stdin);
-
-            // Verificar si el usuario quiere salir
-            if (strncmp(buffer_tx, "exit", 4) == 0) {
-                printf("[CLIENT]: Saliendo...\n");
-                break;
-            }
-
-            // Enviar mensaje al servidor
-            write(sockfd, buffer_tx, sizeof(buffer_tx));
-            read(sockfd, buffer_rx, sizeof(buffer_rx));
-            printf("[SERVER]: %s \n", buffer_rx);
+        // Obtener la dirección IP del cliente
+        struct sockaddr_in addr;
+        socklen_t len = sizeof(addr);
+        if (getsockname(sockfd, (struct sockaddr *)&addr, &len) == -1) {
+            perror("[CLIENT-ERROR]: Obtención de dirección IP del cliente fallida\n");
+            exit(EXIT_FAILURE);
         }
 
+        sprintf(buffer_tx, "El usuario %s se conecto", username);
+        
+        Chat__NewUser new_client = CHAT__NEW_USER__INIT;
+        new_client.username = username;
+        new_client.ip = inet_ntoa(addr.sin_addr);
+
+        size_t package_size = chat__new_user__get_packed_size(&new_client);
+        uint8_t *buffer = malloc(package_size);
+        chat__new_user__pack(&new_client, buffer);
+
+        if(send(sockfd, buffer, package_size, 0) < 0){
+            perror("[CLIENT-ERROR]: Envio de mensaje fallido\n");
+            exit(EXIT_FAILURE);
+        }
+
+        char input[100];
+        while (1) {
+            printf("Escribe un mensaje: ");
+            fgets(input, sizeof(input), stdin);
+            // Eliminamos el caracter de nueva línea del final del string
+            input[strcspn(input, "\n")] = 0;
+
+            if (strcmp(input, "exit") == 0) {
+                break;
+            }
+        }
+
+        free(buffer);
         close(sockfd);
 
         return 0;
