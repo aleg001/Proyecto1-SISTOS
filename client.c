@@ -242,21 +242,18 @@ int main(int argc, const char **argv)
                 switch (opcion)
                 {
                 case OP_CHAT:
-
+                    printf("Ingrese mensaje: ");
                     if (fgets(input, sizeof(input), stdin) == NULL)
                     {
                         printf("FORMATO INCORRECTO\n");
                         continue;
                     }
-                    printf("Ingrese mensaje: ");
                     input[strcspn(input, "\n")] = '\0';
 
                     char *txt_mensaje = strtok(input, " ");
                     txt_mensaje = strtok(NULL, "");
 
-                    printf("Mensaje: %s\n", txt_mensaje);
-
-                    if (txt_mensaje == NULL)
+                    if (txt_mensaje == NULL || strlen(txt_mensaje) == 0)
                     {
                         printf("FORMATO INCORRECTO\n");
                         continue;
@@ -265,8 +262,9 @@ int main(int argc, const char **argv)
                     ChatSistOS__Message chat_message = CHAT_SIST_OS__MESSAGE__INIT;
                     chat_message.message_private = "0";
                     chat_message.message_destination = "";
-                    chat_message.message_content = txt_mensaje;
                     chat_message.message_sender = username;
+
+                    chat_message.message_content = strdup(txt_mensaje);
 
                     ChatSistOS__UserOption option_user = CHAT_SIST_OS__USER_OPTION__INIT;
                     option_user.op = opcion;
@@ -286,6 +284,8 @@ int main(int argc, const char **argv)
                         free(buffer);
                         printf("[CLIENT]: Mensaje enviado\n");
                     }
+
+                    free(chat_message.message_content);
                     break;
 
                 case OP_DM:
@@ -313,8 +313,8 @@ int main(int argc, const char **argv)
                     ChatSistOS__Message dm_message = CHAT_SIST_OS__MESSAGE__INIT;
                     dm_message.message_private = 1;
                     dm_message.message_destination = usuarioname2;
-                    dm_message.message_content = dm_mensaje;
-                    dm_message.message_sender = username;
+                    dm_message.message_content = strdup(dm_mensaje);
+                    dm_message.message_sender = strdup(username);
 
                     size_t dm_message_size = chat_sist_os__message__get_packed_size(&dm_message);
                     uint8_t *dm_message_buffer = malloc(dm_message_size);
@@ -331,9 +331,12 @@ int main(int argc, const char **argv)
                     else
                     {
                         free(dm_message_buffer);
+                        free(dm_message.message_content);
+                        free(dm_message.message_sender);
                         printf("[CLIENT]: Mensaje enviado\n");
                         continue;
                     }
+
                     break;
 
                 case OP_STATUS:
