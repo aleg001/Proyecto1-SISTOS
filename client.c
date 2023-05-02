@@ -16,6 +16,7 @@
 #include <ctype.h>
 #include <ifaddrs.h>
 #include <net/if.h>
+#include <signal.h>
 
 #define BUFFER_SIZE 1024
 
@@ -61,37 +62,29 @@ void *client_listening(void *arg)
 
     while (1)
     {
-        uint8_t recv_buffer[BUFFER_SIZE];
-        ssize_t recv_size = recv(client_socket, recv_buffer, sizeof(recv_buffer), 0);
-
-        if (recv_size < 0)
+        uint8_t buffer_rx[1024];
+        ssize_t bytesRecibidos = recv(client_socket, buffer_rx, 1024, 0);
+        if (bytesRecibidos < 0)
         {
-            ERRORMensaje("ERROR: Error al recibir la respuesta\n");
-            exit(EXIT_FAILURE);
-        }
-        else if (recv_size == 0)
-        {
-            ERRORMensaje("ERROR: Servidor desconectado\n");
-            exit(EXIT_FAILURE);
+            perror("[CLIENT-ERROR]: Recepcion de respuesta fallida\n");
+            break;
         }
 
-        ChatSistOS__Answer *response = chat_sist_os__answer__unpack(NULL, recv_size, recv_buffer);
-
-        if (response == NULL)
+        // Process the received message
+        ChatSistOS__Answer *answer = chat_sist_os__answer__unpack(NULL, bytesRecibidos, buffer_rx);
+        if (answer == NULL)
         {
-            ERRORMensaje("ERROR: No se pudo desempaquetar el mensaje recibido\n");
-            continue;
+            printf("ERROR: No se pudo desempaquetar el mensaje recibido\n");
+            break;
         }
+        printf("[SERVER (%d)]->[%s]: %s\n", answer->response_status_code, answer->user->user_name, answer->response_message);
 
-        if (response->op == OP_CHAT)
-        {
-            printf("[%s] -> [TODOS]: %s\n", response->user->user_name, response->response_message);
-        }
-
-        chat_sist_os__answer__free_unpacked(response, NULL);
+        // Clean up the allocated memory
+        chat_sist_os__answer__free_unpacked(answer, NULL);
     }
 
-    return NULL;
+    close(client_socket);
+    pthread_exit(NULL);
 }
 
 void AYUDA()
@@ -184,6 +177,13 @@ int main(int argc, const char **argv)
         }
 
         free(buffer_tx);
+        pthread_t listener_thread;
+
+        if (pthread_create(&listener_thread, NULL, client_listening, (void *)&cliente_fd) < 0)
+        {
+            ERRORMensaje("[CLIENT-ERROR]: No se pudo crear el hilo de escucha\n");
+            exit(EXIT_FAILURE);
+        }
 
         uint8_t buffer_rx[1024];
         ssize_t bytesRecibidos = recv(cliente_fd, buffer_rx, 1024, 0);
@@ -268,12 +268,15 @@ int main(int argc, const char **argv)
                     chat_message.message_content = txt_mensaje;
                     chat_message.message_sender = username;
 
-                    size_t serializado = chat_sist_os__message__get_packed_size(&chat_message);
+                    ChatSistOS__UserOption option_user = CHAT_SIST_OS__USER_OPTION__INIT;
+                    option_user.op = opcion;
+                    option_user.message = &chat_message;
 
-                    uint8_t *buffer = malloc(serializado);
+                    size_t serializar = chat_sist_os__user_option__get_packed_size(&option_user);
+                    uint8_t *buffer = malloc(serializar);
                     chat_sist_os__user_option__pack(&option_user, buffer);
 
-                    if (send(cliente_fd, buffer, serializado, 0) < 0)
+                    if (send(cliente_fd, buffer, serializar, 0) < 0)
                     {
                         ERRORMensaje("ERROR: Envio de mensaje fallido\n");
                         continue;
@@ -282,16 +285,6 @@ int main(int argc, const char **argv)
                     {
                         free(buffer);
                         printf("[CLIENT]: Mensaje enviado\n");
-
-                        pthread_t listener_thread;
-                        int thread_status = pthread_create(&listener_thread, NULL, client_listening, (void *)&cliente_fd);
-                        if (thread_status != 0)
-                        {
-                            ERRORMensaje("[CLIENT-ERROR]: No se pudo crear el hilo de escucha\n");
-                            exit(EXIT_FAILURE);
-                        }
-
-                        continue;
                     }
                     break;
 
@@ -353,7 +346,6 @@ int main(int argc, const char **argv)
                     {
                         ERRORMensaje("[CLIENT-ERROR]: Recepcion de respuesta fallida\n");
                     }
-
 
                     ChatSistOS__Answer *answer_b = chat_sist_os__answer__unpack(NULL, bytesRecibidos_b, buffer_rx_b);
                     if (answer_b == NULL)

@@ -234,31 +234,28 @@ void *handle_newclient(void *arg)
                     if (user_option->message)
                     {
                         ChatSistOS__Message *broadcast_message = user_option->message;
-                        if (broadcast_message && !broadcast_message->message_private)
+
+                        for (int i = 0; i < cantidad_clientes; i++)
                         {
-                            printf("Chat global de %s: %s\n", broadcast_message->message_sender, broadcast_message->message_content);
 
-                            size_t msg_size = chat_sist_os__message__get_packed_size(broadcast_message);
+                            ChatSistOS__Answer answer = CHAT_SIST_OS__ANSWER__INIT;
+                            answer.op = 1;
+                            answer.response_status_code = 400;
+                            answer.message = broadcast_message;
+
+                            size_t msg_size = chat_sist_os__answer__get_packed_size(&answer);
                             uint8_t *msg_buffer = malloc(msg_size);
-                            chat_sist_os__message__pack(broadcast_message, msg_buffer);
+                            chat_sist_os__answer__pack(&answer, msg_buffer);
 
-                            for (int i = 0; i < cantidad_clientes; i++)
+                            if (send(clients[i].sockfd, msg_buffer, msg_size, 0) < 0)
                             {
-                                if (clients[i].sockfd != client_socket)
-                                {
-                                    ssize_t bytes_sent = send(clients[i].sockfd, msg_buffer, msg_size, 0);
-                                    if (bytes_sent < 0)
-                                    {
-                                        perror("[SERVER-ERROR]: Broadcast mensaje falló\n");
-                                    }
-                                }
+                                perror("[SERVER-ERROR]: Envio de respuesta fallido\n");
+                                exit(EXIT_FAILURE);
                             }
-
                             free(msg_buffer);
                         }
+                        break;
                     }
-                    user_option->op = 0;
-                    break;
                 }
 
                 else if (user_option->op == 2)
@@ -268,16 +265,18 @@ void *handle_newclient(void *arg)
                 else if (user_option->op == 3)
                 {
 
-                    if (user.status > 3 || user.status < 1) {
+                    if (user.status > 3 || user.status < 1)
+                    {
                         // Error
                         printf("Status de usuario erroneo: %d\n", user.status);
                     }
-                    else {
+                    else
+                    {
                         printf("Status de usuario: %d\n", user.status);
 
                         int new_Status_temp = (user.status == 1) ? 2 : 1;
 
-                        printf("New status: %d\n", new_Status_temp); 
+                        printf("New status: %d\n", new_Status_temp);
                         printf("%s\n", (new_Status_temp == 1) ? "ocupado -> en linea" : "en linea -> ocupado");
 
                         user.status = new_Status_temp;
@@ -302,10 +301,7 @@ void *handle_newclient(void *arg)
                         }
 
                         free(buffer_envioB);
-
-                        
                     }
-
                 }
                 else if (user_option->op == 4)
                 {
