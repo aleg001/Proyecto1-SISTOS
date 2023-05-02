@@ -169,6 +169,7 @@ int main(int argc, const char **argv)
             while (veri)
             {
                 MENU();
+                char chat_input[BUFFER_SIZE];
                 printf("\nIngrese comando: ");
                 if (fgets(input, sizeof(input), stdin) == NULL)
                 {

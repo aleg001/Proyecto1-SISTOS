@@ -136,27 +136,6 @@ void ERRORMensaje(const char *message)
     exit(EXIT_FAILURE);
 }
 
-void handle_incoming_message(uint8_t *buffer, size_t len)
-{
-    ChatSistOS__Message *received_message = chat_sist_os__message__unpack(NULL, len, buffer);
-    if (received_message == NULL)
-    {
-        printf("[CLIENT-ERROR]: Failed to unpack message\n");
-        return;
-    }
-
-    if (received_message->message_private)
-    {
-        printf("[DM] %s: %s\n", received_message->message_sender, received_message->message_content);
-    }
-    else
-    {
-        printf("[BROADCAST] %s: %s\n", received_message->message_sender, received_message->message_content);
-    }
-
-    chat_sist_os__message__free_unpacked(received_message, NULL);
-}
-
 void *handle_newclient(void *arg)
 {
     // Se obtiene el cliente y su informacion
@@ -237,39 +216,40 @@ void *handle_newclient(void *arg)
                 printf("Opcion ingresada por %s: %d\n", new_client->username, user_option->op);
 
                 // Manejar opciones
-
                 if (user_option->op == 1)
                 {
-
                     printf("[SERVER] Broadcast mensaje recibido\n");
-                    printf("Mensaje: %s\n", user_option->message->message_content);
 
-                    ChatSistOS__Message *broadcast_message = user_option->message;
-                    if (broadcast_message && !broadcast_message->message_private)
+                    if (user_option->message)
                     {
-                        printf("Chat global de %s: %s\n", broadcast_message->message_sender, broadcast_message->message_content);
-
-                        size_t msg_size = chat_sist_os__message__get_packed_size(broadcast_message);
-                        uint8_t *msg_buffer = malloc(msg_size);
-                        chat_sist_os__message__pack(broadcast_message, msg_buffer);
-
-                        for (int i = 0; i < cantidad_clientes; i++)
+                        ChatSistOS__Message *broadcast_message = user_option->message;
+                        if (broadcast_message && !broadcast_message->message_private)
                         {
-                            if (clients[i].sockfd != client_socket)
+                            printf("Chat global de %s: %s\n", broadcast_message->message_sender, broadcast_message->message_content);
+
+                            size_t msg_size = chat_sist_os__message__get_packed_size(broadcast_message);
+                            uint8_t *msg_buffer = malloc(msg_size);
+                            chat_sist_os__message__pack(broadcast_message, msg_buffer);
+
+                            for (int i = 0; i < cantidad_clientes; i++)
                             {
-                                ssize_t bytes_sent = send(clients[i].sockfd, msg_buffer, msg_size, 0);
-                                if (bytes_sent < 0)
+                                if (clients[i].sockfd != client_socket)
                                 {
-                                    perror("[SERVER-ERROR]: Broadcast mensaje falló\n");
+                                    ssize_t bytes_sent = send(clients[i].sockfd, msg_buffer, msg_size, 0);
+                                    if (bytes_sent < 0)
+                                    {
+                                        perror("[SERVER-ERROR]: Broadcast mensaje falló\n");
+                                    }
                                 }
                             }
-                        }
 
-                        free(msg_buffer);
+                            free(msg_buffer);
+                        }
                     }
                     user_option->op = 0;
                     break;
                 }
+
                 else if (user_option->op == 2)
                 {
                     printf("2\n");
