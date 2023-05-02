@@ -161,6 +161,7 @@ void *handle_newclient(void *arg)
 {
     // Se obtiene el cliente y su informacion
     int client_socket = *(int *)arg;
+
     uint8_t buffer[1024];
     ssize_t bytes_received = recv(client_socket, buffer, 1024, 0);
 
@@ -247,12 +248,10 @@ void *handle_newclient(void *arg)
                     {
                         printf("Chat global de %s: %s\n", broadcast_message->message_sender, broadcast_message->message_content);
 
-                        // Serialize the message
                         size_t msg_size = chat_sist_os__message__get_packed_size(broadcast_message);
                         uint8_t *msg_buffer = malloc(msg_size);
                         chat_sist_os__message__pack(broadcast_message, msg_buffer);
 
-                        // Iterate through all connected clients and send the message
                         for (int i = 0; i < cantidad_clientes; i++)
                         {
                             if (clients[i].sockfd != client_socket)
@@ -265,10 +264,9 @@ void *handle_newclient(void *arg)
                             }
                         }
 
-                        // Free the allocated memory
                         free(msg_buffer);
                     }
-
+                    user_option->op = 0;
                     break;
                 }
                 else if (user_option->op == 2)
