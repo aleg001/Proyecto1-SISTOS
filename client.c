@@ -37,6 +37,7 @@ char content[BUFFER_SIZE];
 int state;
 char connected_users;
 char user_information[BUFFER_SIZE];
+char input[BUFFER_SIZE];
 
 void MENU()
 {
@@ -55,6 +56,40 @@ void MENU()
     {
         printf("- %s\n", comandos[i]);
     }
+}
+void ERRORMensaje(const char *message)
+{
+    perror(message);
+    exit(EXIT_FAILURE);
+}
+
+void *listen_server(void *arg)
+{
+    int cliente_fd = *(int *)arg;
+    uint8_t buffer_rx[1024];
+    ssize_t bytesRecibidos;
+
+    while (1)
+    {
+        bytesRecibidos = recv(cliente_fd, buffer_rx, 1024, 0);
+        if (bytesRecibidos < 0)
+        {
+            ERRORMensaje("[CLIENT-ERROR]: Recepcion de respuesta fallida\n");
+            continue;
+        }
+
+        ChatSistOS__Answer *answer = chat_sist_os__answer__unpack(NULL, bytesRecibidos, buffer_rx);
+        if (answer == NULL)
+        {
+            printf("ERROR: No se pudo desempaquetar el mensaje recibido\n");
+            continue;
+        }
+
+        printf("[SERVER (%d)]->[%s]: %s\n", answer->response_status_code, answer->user->user_name, answer->response_message);
+        chat_sist_os__answer__free_unpacked(answer, NULL);
+    }
+
+    return NULL;
 }
 
 void AYUDA()
@@ -75,12 +110,6 @@ void AYUDA()
     }
 }
 
-void ERRORMensaje(const char *message)
-{
-    perror(message);
-    exit(EXIT_FAILURE);
-}
-
 int main(int argc, const char **argv)
 {
 
@@ -91,9 +120,6 @@ int main(int argc, const char **argv)
     username = (char *)argv[1];
     IPserver = argv[2];
     puerto = atoi(argv[3]);
-
-    printf("BIENVENIDO AL ¡CHAT!, selecciona la opcion help para mas informacion\n");
-    char input[BUFFER_SIZE];
 
     if (argc > 1)
     {
@@ -166,9 +192,13 @@ int main(int argc, const char **argv)
 
         if (answer->response_status_code != 400)
         {
+            pthread_t listen_thread;
+            pthread_create(&listen_thread, NULL, listen_server, &cliente_fd);
+
             int veri = 1;
             while (veri)
             {
+
                 // MENU();
                 // printf("Ingrese comando: ");
                 // fflush(stdout);

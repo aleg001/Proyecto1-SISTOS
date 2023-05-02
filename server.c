@@ -271,7 +271,6 @@ void *handle_newclient(void *arg)
                             answer.op = 1;
                             answer.response_status_code = 200;
                             answer.message = &new_message;
-                            // answer.user = &user;
 
                             size_t msg_size = chat_sist_os__answer__get_packed_size(&answer);
                             uint8_t *msg_buffer = malloc(msg_size);
