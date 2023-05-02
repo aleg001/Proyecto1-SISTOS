@@ -91,6 +91,17 @@ ChatSistOS__User *find_user(char *username)
     return NULL;
 }
 
+void update_user_status(char *username, char *ip, Client cliente)
+{
+    for (int i = 0; i < cantidad_clientes; i++)
+    {
+        if (strcmp(clients[i].username, username) == 0 && strcmp(clients[i].user_ip, ip) == 0)
+        {
+            clients[i] = cliente;
+        }
+    }
+}
+
 int search_user(char *username, char *ip)
 {
     for (int i = 0; i < cantidad_clientes; i++)
@@ -256,7 +267,45 @@ void *handle_newclient(void *arg)
                 }
                 else if (user_option->op == 3)
                 {
-                    printf("3\n");
+
+                    if (user.status > 3 || user.status < 1) {
+                        // Error
+                        printf("Status de usuario erroneo: %d\n", user.status);
+                    }
+                    else {
+                        printf("Status de usuario: %d\n", user.status);
+
+                        int new_Status_temp = (user.status == 1) ? 2 : 1;
+
+                        printf("New status: %d\n", new_Status_temp); 
+                        printf("%s\n", (new_Status_temp == 1) ? "ocupado -> en linea" : "en linea -> ocupado");
+
+                        user.status = new_Status_temp;
+
+                        update_user_status(user.username, user.user_ip, user);
+
+                        // Avisar al cliente
+                        ChatSistOS__Answer answer_b = CHAT_SIST_OS__ANSWER__INIT;
+
+                        answer_b.response_status_code = 200;
+                        answer_b.response_message = ("Status cambiado: %s\n", (new_Status_temp == 1) ? "ocupado -> en linea" : "en linea -> ocupado");
+                        answer_b.user = &user_response;
+
+                        size_t package_size = chat_sist_os__answer__get_packed_size(&answer_b);
+                        uint8_t *buffer_envioB = malloc(package_size);
+                        chat_sist_os__answer__pack(&answer_b, buffer_envioB);
+
+                        if (send(client_socket, buffer_envioB, package_size, 0) < 0)
+                        {
+                            perror("[SERVER-ERROR]: Envio de respuesta fallido\n");
+                            exit(EXIT_FAILURE);
+                        }
+
+                        free(buffer_envioB);
+
+                        
+                    }
+
                 }
                 else if (user_option->op == 4)
                 {
