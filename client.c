@@ -57,54 +57,22 @@ void MENU()
     }
 }
 
-void *client_listening(void *arg)
-{
-    int client_socket = *(int *)arg;
-
-    while (1)
-    {
-        uint8_t buffer_rx[1024];
-        ssize_t bytesRecibidos = recv(client_socket, buffer_rx, 1024, 0);
-        if (bytesRecibidos < 0)
-        {
-            perror("[CLIENT-ERROR]: Recepcion de respuesta fallida\n");
-            break;
-        }
-
-        // Process the received message
-        ChatSistOS__Answer *answer = chat_sist_os__answer__unpack(NULL, bytesRecibidos, buffer_rx);
-        if (answer == NULL)
-        {
-            printf("ERROR: No se pudo desempaquetar el mensaje recibido\n");
-            break;
-        }
-        printf("[SERVER (%d)]->[%s]: %s\n", answer->response_status_code, answer->user->user_name, answer->response_message);
-
-        // Clean up the allocated memory
-        chat_sist_os__answer__free_unpacked(answer, NULL);
-    }
-
-    close(client_socket);
-    pthread_exit(NULL);
-}
-
 void AYUDA()
 {
     const char *comandos[] = {
-        "chat <mensaje>: envía un mensaje a todos los usuarios conectados",
-        "dm <usuario> <mensaje>: envía un mensaje directo al usuario especificado",
-        "status <estado>: cambia tu estado al valor especificado (0: activo, 1: ocupado, 2: inactivo)",
-        "usuarios: muestra una lista de todos los usuarios conectados",
-        "usuario <nombredeusuario>: muestra información sobre el usuario especificado",
-        "help: muestra este mensaje de ayuda",
-        "exit: sale del cliente de chat"};
+        "1 <mensaje>: envía un mensaje a todos los usuarios conectados",
+        "2 <usuario> <mensaje>: envía un mensaje directo al usuario especificado",
+        "3 <estado>: cambia tu estado al valor especificado (0: activo, 1: ocupado, 2: inactivo)",
+        "4: muestra una lista de todos los usuarios conectados",
+        "5 <nombredeusuario>: muestra información sobre el usuario especificado",
+        "6: muestra este mensaje de ayuda",
+        "7: sale del cliente de chat"};
 
     printf("\nSintaxis comandos:\n");
     for (int i = 0; i < sizeof(comandos) / sizeof(comandos[0]); i++)
     {
         printf("- %s\n", comandos[i]);
     }
-
 }
 
 void ERRORMensaje(const char *message)
@@ -245,7 +213,12 @@ int main(int argc, const char **argv)
                     continue;
                 }
 
-                int opcion = atoi(input);
+                int opcion;
+                if (sscanf(input, "%d", &opcion) != 1)
+                {
+                    printf("ERROR: Ingrese un número válido\n");
+                    continue;
+                }
                 uint8_t bufferExit = 1;
 
                 ChatSistOS__UserOption option_user = CHAT_SIST_OS__USER_OPTION__INIT;
@@ -264,104 +237,91 @@ int main(int argc, const char **argv)
 
                 switch (opcion)
                 {
+
                 case OP_CHAT:
                     printf("Mensaje general\n\n");
+                    printf("Ingrese mensaje: ");
+                    if (fgets(input, sizeof(input), stdin) == NULL)
+                    {
+                        printf("FORMATO INCORRECTO\n");
+                        continue;
+                    }
+                    input[strcspn(input, "\n")] = '\0';
 
-                    // printf("Ingrese mensaje: ");
-                    // if (fgets(input, sizeof(input), stdin) == NULL)
-                    // {
-                    //     printf("FORMATO INCORRECTO\n");
-                    //     continue;
-                    // }
-                    // input[strcspn(input, "\n")] = '\0';
+                    ChatSistOS__Message chat_message = CHAT_SIST_OS__MESSAGE__INIT;
+                    chat_message.message_private = 0;
+                    chat_message.message_content = strdup(input);
+                    chat_message.message_sender = strdup(username);
 
-                    // char *txt_mensaje = strtok(input, " ");
-                    // txt_mensaje = strtok(NULL, "");
+                    ChatSistOS__UserOption user_option = CHAT_SIST_OS__USER_OPTION__INIT;
+                    user_option.op = opcion;
+                    user_option.message = &chat_message;
 
-                    // if (txt_mensaje == NULL || strlen(txt_mensaje) == 0)
-                    // {
-                    //     printf("FORMATO INCORRECTO\n");
-                    //     continue;
-                    // }
+                    size_t package_size_chat = chat_sist_os__user_option__get_packed_size(&user_option);
+                    uint8_t *package_buffer_chat = malloc(package_size_chat);
+                    chat_sist_os__user_option__pack(&user_option, package_buffer_chat);
 
-                    // ChatSistOS__Message chat_message = CHAT_SIST_OS__MESSAGE__INIT;
-                    // chat_message.message_private = "0";
-                    // chat_message.message_destination = "";
-                    // chat_message.message_sender = username;
+                    if (send(cliente_fd, package_buffer_chat, package_size_chat, 0) < 0)
+                    {
+                        perror("[CLIENT-ERROR]: Envio de mensaje fallido\n");
+                        continue;
+                    }
+                    else
+                    {
+                        free(package_buffer_chat);
+                        printf("[CLIENT]: Mensaje enviado\n");
+                    }
 
-                    // chat_message.message_content = strdup(txt_mensaje);
-
-                    // ChatSistOS__UserOption option_user = CHAT_SIST_OS__USER_OPTION__INIT;
-                    // option_user.op = opcion;
-                    // option_user.message = &chat_message;
-
-                    // size_t serializar = chat_sist_os__user_option__get_packed_size(&option_user);
-                    // uint8_t *buffer = malloc(serializar);
-                    // chat_sist_os__user_option__pack(&option_user, buffer);
-
-                    // if (send(cliente_fd, buffer, serializar, 0) < 0)
-                    // {
-                    //     ERRORMensaje("ERROR: Envio de mensaje fallido\n");
-                    //     continue;
-                    // }
-                    // else
-                    // {
-                    //     free(buffer);
-                    //     printf("[CLIENT]: Mensaje enviado\n");
-                    // }
-
-                    // free(chat_message.message_content);
+                    free(chat_message.message_sender);
+                    free(chat_message.message_content);
                     break;
 
                 case OP_DM:
                     printf("Mensaje privado\n\n");
-                    // if (fgets(input, sizeof(input), stdin) == NULL)
-                    // {
-                    //     printf("FORMATO INCORRECTO\n");
-                    //     continue;
-                    // }
-                    // input[strcspn(input, "\n")] = '\0';
+                    printf("Ingrese el nombre del destinatario: ");
+                    if (fgets(input, sizeof(input), stdin) == NULL)
+                    {
+                        printf("FORMATO INCORRECTO\n");
+                        continue;
+                    }
+                    input[strcspn(input, "\n")] = '\0';
 
-                    // char *usuarioname2 = strtok(input, " ");
-                    // if (usuarioname2 == NULL)
-                    // {
-                    //     printf("FORMATO INCORRECTO\n");
-                    //     continue;
-                    // }
-                    // char *dm_mensaje = strtok(NULL, "");
-                    // if (dm_mensaje == NULL)
-                    // {
-                    //     printf("FORMATO INCORRECTO\n");
-                    //     continue;
-                    // }
+                    char *dm_destination = input;
+                    printf("Ingrese el mensaje: ");
+                    if (fgets(input, sizeof(input), stdin) == NULL)
+                    {
+                        printf("FORMATO INCORRECTO\n");
+                        continue;
+                    }
+                    input[strcspn(input, "\n")] = '\0';
 
-                    // ChatSistOS__Message dm_message = CHAT_SIST_OS__MESSAGE__INIT;
-                    // dm_message.message_private = 1;
-                    // dm_message.message_destination = usuarioname2;
-                    // dm_message.message_content = strdup(dm_mensaje);
-                    // dm_message.message_sender = strdup(username);
+                    ChatSistOS__Message dm_message = CHAT_SIST_OS__MESSAGE__INIT;
+                    dm_message.message_private = 1;
+                    dm_message.message_destination = dm_destination;
+                    dm_message.message_content = strdup(input);
+                    dm_message.message_sender = strdup(username);
 
-                    // size_t dm_message_size = chat_sist_os__message__get_packed_size(&dm_message);
-                    // uint8_t *dm_message_buffer = malloc(dm_message_size);
-                    // chat_sist_os__message__pack(&dm_message, dm_message_buffer);
+                    ChatSistOS__UserOption option_user = CHAT_SIST_OS__USER_OPTION__INIT;
+                    option_user.op = opcion;
+                    option_user.message = &dm_message;
 
-                    // printf("Mensaje: %s\n", dm_mensaje);
-                    // printf("Destinatario: %s\n", usuarioname2);
+                    size_t serializar = chat_sist_os__user_option__get_packed_size(&option_user);
+                    uint8_t *buffer = malloc(serializar);
+                    chat_sist_os__user_option__pack(&option_user, buffer);
 
-                    // if (send(cliente_fd, dm_message_buffer, dm_message_size, 0) < 0)
-                    // {
-                    //     ERRORMensaje("ERROR: Envio de mensaje fallido\n");
-                    //     continue;
-                    // }
-                    // else
-                    // {
-                    //     free(dm_message_buffer);
-                    //     free(dm_message.message_content);
-                    //     free(dm_message.message_sender);
-                    //     printf("[CLIENT]: Mensaje enviado\n");
-                    //     continue;
-                    // }
-
+                    if (send(cliente_fd, buffer, serializar, 0) < 0)
+                    {
+                        ERRORMensaje("ERROR: Envio de mensaje fallido\n");
+                        continue;
+                    }
+                    else
+                    {
+                        free(buffer);
+                        free(dm_message.message_content);
+                        free(dm_message.message_sender);
+                        printf("[CLIENT]: Mensaje enviado\n");
+                        continue;
+                    }
                     break;
 
                 case OP_STATUS:
@@ -370,7 +330,7 @@ int main(int argc, const char **argv)
                     ChatSistOS__Status status_usr = CHAT_SIST_OS__STATUS__INIT;
                     status_usr.user_name = answer->user->user_name;
                     status_usr.user_state = answer->user->user_state;
-                    
+
                     ChatSistOS__UserOption usr_op_s = CHAT_SIST_OS__USER_OPTION__INIT;
                     usr_op_s.op = opcion;
                     usr_op_s.status = &status_usr;
@@ -410,7 +370,7 @@ int main(int argc, const char **argv)
 
                     ChatSistOS__UserList new_user_all = CHAT_SIST_OS__USER_LIST__INIT;
                     new_user_all.list = 1;
-                    new_user_all.user_name = answer->user->user_name; 
+                    new_user_all.user_name = answer->user->user_name;
 
                     ChatSistOS__UserOption usr_op_a = CHAT_SIST_OS__USER_OPTION__INIT;
                     usr_op_a.op = opcion;
@@ -476,7 +436,7 @@ int main(int argc, const char **argv)
 
                     ChatSistOS__UserList new_user_sp = CHAT_SIST_OS__USER_LIST__INIT;
                     new_user_sp.list = 0;
-                    new_user_sp.user_name = usuarioname; 
+                    new_user_sp.user_name = usuarioname;
 
                     ChatSistOS__UserOption usr_op_sp = CHAT_SIST_OS__USER_OPTION__INIT;
                     usr_op_sp.op = opcion;
@@ -529,7 +489,7 @@ int main(int argc, const char **argv)
                     veri = 0;
                     break;
                 default:
-                    printf("Opcion INVALIDO, selecciona la opcion help (6) para ayuda\n");
+                    printf("Opcion INVALIDA, selecciona la opcion help (6) para ayuda\n");
                     break;
                 }
             }
