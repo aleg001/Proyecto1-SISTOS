@@ -55,34 +55,6 @@ void MENU()
     }
 }
 
-void *receive_thread(void *client_socket)
-{
-    int cliente_fd = *(int *)client_socket;
-    uint8_t buffer_rx[1024];
-
-    while (1)
-    {
-        ssize_t bytesRecibidos = recv(cliente_fd, buffer_rx, 1024, 0);
-        if (bytesRecibidos < 0)
-        {
-            ERRORMensaje("[CLIENT-ERROR]: Recepcion de respuesta fallida\n");
-            break;
-        }
-
-        ChatSistOS__Answer *answer = chat_sist_os__answer__unpack(NULL, bytesRecibidos, buffer_rx);
-        if (answer != NULL)
-        {
-            if (answer->message && !answer->message->message_private)
-            {
-                printf("Chat global de %s: %s\n", answer->message->message_sender, answer->message->message_content);
-            }
-            chat_sist_os__answer__free_unpacked(answer, NULL);
-        }
-    }
-
-    return NULL;
-}
-
 void AYUDA()
 {
     const char *comandos[] = {
@@ -192,12 +164,7 @@ int main(int argc, const char **argv)
 
         if (answer->response_status_code != 400)
         {
-            pthread_t recv_thread;
-            if (pthread_create(&recv_thread, NULL, receive_thread, (void *)&cliente_fd) != 0)
-            {
-                ERRORMensaje("[CLIENT-ERROR]: Creacion del hilo de recepción fallida\n");
-                return -1;
-            }
+
             int veri = 1;
             while (veri)
             {

@@ -241,7 +241,8 @@ void *handle_newclient(void *arg)
                 if (user_option->op == 1)
                 {
 
-                    printf("[SERVER] Broadcast mensaje recivido\n");
+                    printf("[SERVER] Broadcast mensaje recibido\n");
+                    printf("Mensaje: %s\n", user_option->message->message_content);
 
                     ChatSistOS__Message *broadcast_message = user_option->message;
                     if (broadcast_message && !broadcast_message->message_private)
