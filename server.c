@@ -147,6 +147,27 @@ void ERRORMensaje(const char *message)
     exit(EXIT_FAILURE);
 }
 
+void handle_incoming_message(uint8_t *buffer, size_t len)
+{
+    ChatSistOS__Message *received_message = chat_sist_os__message__unpack(NULL, len, buffer);
+    if (received_message == NULL)
+    {
+        printf("[CLIENT-ERROR]: Failed to unpack message\n");
+        return;
+    }
+
+    if (received_message->message_private)
+    {
+        printf("[DM] %s: %s\n", received_message->message_sender, received_message->message_content);
+    }
+    else
+    {
+        printf("[BROADCAST] %s: %s\n", received_message->message_sender, received_message->message_content);
+    }
+
+    chat_sist_os__message__free_unpacked(received_message, NULL);
+}
+
 void *handle_newclient(void *arg)
 {
     // Se obtiene el cliente y su informacion
@@ -227,172 +248,213 @@ void *handle_newclient(void *arg)
                 printf("Opcion ingresada por %s: %d\n", new_client->username, user_option->op);
 
                 // Manejar opciones
+
                 if (user_option->op == 1)
                 {
-                    printf("[SERVER] Broadcast mensaje recibido\n");
+                    printf("[SERVER]: Broadcast mensaje recibido\n");
 
-                    if (user_option->message)
-                    {
-                        ChatSistOS__Message *broadcast_message = user_option->message;
+                    // if (user_option->message)
+                    // {
+                    //     ChatSistOS__Message *broadcast_message = user_option->message;
 
-                        for (int i = 0; i < cantidad_clientes; i++)
-                        {
+                    //     for (int i = 0; i < cantidad_clientes; i++)
+                    //     {
 
-                            ChatSistOS__Answer answer = CHAT_SIST_OS__ANSWER__INIT;
-                            answer.op = 1;
-                            answer.response_status_code = 400;
-                            answer.message = broadcast_message;
+                    //         ChatSistOS__Answer answer = CHAT_SIST_OS__ANSWER__INIT;
+                    //         answer.op = 1;
+                    //         answer.response_status_code = 400;
+                    //         answer.message = broadcast_message;
 
-                            size_t msg_size = chat_sist_os__answer__get_packed_size(&answer);
-                            uint8_t *msg_buffer = malloc(msg_size);
-                            chat_sist_os__answer__pack(&answer, msg_buffer);
+                    //         size_t msg_size = chat_sist_os__answer__get_packed_size(&answer);
+                    //         uint8_t *msg_buffer = malloc(msg_size);
+                    //         chat_sist_os__answer__pack(&answer, msg_buffer);
 
-                            if (send(clients[i].sockfd, msg_buffer, msg_size, 0) < 0)
-                            {
-                                perror("[SERVER-ERROR]: Envio de respuesta fallido\n");
-                                exit(EXIT_FAILURE);
-                            }
-                            free(msg_buffer);
-                        }
-                        free(broadcast_message);
-                        break;
-                    }
+                    //         if (send(clients[i].sockfd, msg_buffer, msg_size, 0) < 0)
+                    //         {
+                    //             perror("[SERVER-ERROR]: Envio de respuesta fallido\n");
+                    //             exit(EXIT_FAILURE);
+                    //         }
+                    //         free(msg_buffer);
+                    //     }
+                    //     free(broadcast_message);
+                    //     break;
+                    // }
                 }
-
                 else if (user_option->op == 2)
                 {
-                    printf("2\n");
-                    ChatSistOS__Message *dm_message = user_option->message;
-                    char *dm_destination = dm_message->message_destination;
-                    char *dm_content = dm_message->message_content;
-                    char *dm_sender = dm_message->message_sender;
+                    printf("[SERVER]: Mensaje privado\n");
+                    // ChatSistOS__Message *dm_message = user_option->message;
+                    // char *dm_destination = dm_message->message_destination;
+                    // char *dm_content = dm_message->message_content;
+                    // char *dm_sender = dm_message->message_sender;
 
-                    int dm_socket_fd = -1;
-                    for (int i = 0; i < cantidad_clientes; i++)
-                    {
-                        if (strcmp(clients[i].username, dm_destination) == 0)
-                        {
-                            dm_socket_fd = clients[i].sockfd;
-                            break;
-                        }
-                    }
+                    // int dm_socket_fd = -1;
+                    // for (int i = 0; i < cantidad_clientes; i++)
+                    // {
+                    //     if (strcmp(clients[i].username, dm_destination) == 0)
+                    //     {
+                    //         dm_socket_fd = clients[i].sockfd;
+                    //         break;
+                    //     }
+                    // }
 
-                    if (dm_socket_fd == -1)
-                    {
-                        // Destination user not found
-                        ChatSistOS__Answer answer = CHAT_SIST_OS__ANSWER__INIT;
-                        answer.op = 2;
-                        answer.response_status_code = 404;
+                    // if (dm_socket_fd == -1)
+                    // {
+                    //     // Destination user not found
+                    //     ChatSistOS__Answer answer = CHAT_SIST_OS__ANSWER__INIT;
+                    //     answer.op = 2;
+                    //     answer.response_status_code = 404;
 
-                        size_t msg_size = chat_sist_os__answer__get_packed_size(&answer);
-                        uint8_t *msg_buffer = malloc(msg_size);
-                        chat_sist_os__answer__pack(&answer, msg_buffer);
+                    //     size_t msg_size = chat_sist_os__answer__get_packed_size(&answer);
+                    //     uint8_t *msg_buffer = malloc(msg_size);
+                    //     chat_sist_os__answer__pack(&answer, msg_buffer);
 
-                        if (send(client_socket, msg_buffer, msg_size, 0) < 0)
-                        {
-                            perror("[SERVER-ERROR]: Envio de respuesta fallido\n");
-                            exit(EXIT_FAILURE);
-                        }
+                    //     if (send(client_socket, msg_buffer, msg_size, 0) < 0)
+                    //     {
+                    //         perror("[SERVER-ERROR]: Envio de respuesta fallido\n");
+                    //         exit(EXIT_FAILURE);
+                    //     }
 
-                        free(msg_buffer);
-                    }
-                    else
-                    {
+                    //     free(msg_buffer);
+                    // }
+                    // else
+                    // {
 
-                        ChatSistOS__Answer answer = CHAT_SIST_OS__ANSWER__INIT;
-                        answer.op = 2;
-                        answer.response_status_code = 200;
-                        answer.message = dm_message;
+                    //     ChatSistOS__Answer answer = CHAT_SIST_OS__ANSWER__INIT;
+                    //     answer.op = 2;
+                    //     answer.response_status_code = 200;
+                    //     answer.message = dm_message;
 
-                        size_t msg_size = chat_sist_os__answer__get_packed_size(&answer);
-                        uint8_t *msg_buffer = malloc(msg_size);
-                        chat_sist_os__answer__pack(&answer, msg_buffer);
+                    //     size_t msg_size = chat_sist_os__answer__get_packed_size(&answer);
+                    //     uint8_t *msg_buffer = malloc(msg_size);
+                    //     chat_sist_os__answer__pack(&answer, msg_buffer);
 
-                        if (send(dm_socket_fd, msg_buffer, msg_size, 0) < 0)
-                        {
-                            perror("[SERVER-ERROR]: Envio de respuesta fallido\n");
-                            exit(EXIT_FAILURE);
-                        }
+                    //     if (send(dm_socket_fd, msg_buffer, msg_size, 0) < 0)
+                    //     {
+                    //         perror("[SERVER-ERROR]: Envio de respuesta fallido\n");
+                    //         exit(EXIT_FAILURE);
+                    //     }
 
-                        free(msg_buffer);
-                    }
+                    //     free(msg_buffer);
+                    // }
                 }
                 else if (user_option->op == 3)
                 {
 
-                    if (user.status > 3 || user.status < 1)
+                    uint8_t buffer_recepcion[1024];
+                    ssize_t bytes_recepcion = recv(client_socket, buffer_recepcion, 1024, 0);
+                    if (bytes_recepcion < 0)
                     {
-                        // Error
-                        printf("Status de usuario erroneo: %d\n", user.status);
+                        ERRORMensaje("[CLIENT-ERROR]: Recepcion de lista de usuarios fallida\n");
                     }
-                    else
+
+                    ChatSistOS__UserOption *usr_op_st = chat_sist_os__user_option__unpack(NULL, bytes_recepcion, buffer_recepcion);
+                    if (usr_op_st == NULL)
                     {
-                        printf("Status de usuario: %d\n", user.status);
+                        ERRORMensaje("Error al deserializar los datos recibidos del servidor");
+                    }
 
-                        int new_Status_temp = (user.status == 1) ? 2 : 1;
+                    ChatSistOS__User *new_usr_st = find_user(usr_op_st->status->user_name);
 
-                        printf("New status: %d\n", new_Status_temp);
-                        printf("%s\n", (new_Status_temp == 1) ? "ocupado -> en linea" : "en linea -> ocupado");
-
-                        user.status = new_Status_temp;
-
-                        update_user_status(user.username, user.user_ip, user);
-
-                        // Avisar al cliente
-                        ChatSistOS__Answer answer_b = CHAT_SIST_OS__ANSWER__INIT;
-
-                        answer_b.response_status_code = 200;
-                        answer_b.response_message = ("Status cambiado: %s\n", (new_Status_temp == 1) ? "ocupado -> en linea" : "en linea -> ocupado");
-                        answer_b.user = &user_response;
-
-                        size_t package_size = chat_sist_os__answer__get_packed_size(&answer_b);
-                        uint8_t *buffer_envioB = malloc(package_size);
-                        chat_sist_os__answer__pack(&answer_b, buffer_envioB);
-
-                        if (send(client_socket, buffer_envioB, package_size, 0) < 0)
+                    if(new_usr_st != NULL){
+                        if (new_usr_st->user_state > 3 || new_usr_st->user_state < 1)
                         {
-                            perror("[SERVER-ERROR]: Envio de respuesta fallido\n");
-                            exit(EXIT_FAILURE);
+                            // Error
+                            printf("Status de usuario erroneo: %d\n", new_usr_st->user_state);
                         }
+                        else
+                        {
+                            printf("Status de usuario: %d\n", new_usr_st->user_state);
 
-                        free(buffer_envioB);
+                            int new_Status_temp = (new_usr_st->user_state == 1) ? 2 : 1;
+
+                            printf("New status: %d\n", new_Status_temp);
+                            printf("%s\n", (new_Status_temp == 1) ? "Ocupado -> En linea" : "En linea -> Ocupado");
+
+                            user.status = new_Status_temp;
+
+                            update_user_status(new_usr_st->user_name, new_usr_st->user_ip, user);
+
+                            // Avisar al cliente
+                            ChatSistOS__Answer answer_b = CHAT_SIST_OS__ANSWER__INIT;
+
+                            answer_b.response_status_code = 200;
+                            answer_b.response_message = ("Status cambiado: %s\n", (new_Status_temp == 1) ? "Ocupado -> En linea" : "En linea -> Ocupado");
+                            answer_b.user = &user_response;
+
+                            size_t package_size = chat_sist_os__answer__get_packed_size(&answer_b);
+                            uint8_t *buffer_envioB = malloc(package_size);
+                            chat_sist_os__answer__pack(&answer_b, buffer_envioB);
+
+                            if (send(client_socket, buffer_envioB, package_size, 0) < 0)
+                            {
+                                perror("[SERVER-ERROR]: Envio de respuesta fallido\n");
+                                exit(EXIT_FAILURE);
+                            }
+
+                            free(buffer_envioB);
+                        }
                     }
+
                 }
                 else if (user_option->op == 4)
                 {
-                    ChatSistOS__UsersOnline users_online = CHAT_SIST_OS__USERS_ONLINE__INIT;
-                    users_online.n_users = cantidad_clientes;
-                    users_online.users = malloc(sizeof(ChatSistOS__User *) * cantidad_clientes);
-                    for (int i = 0; i < cantidad_clientes; i++)
+
+                    uint8_t buffer_recepcion[1024];
+                    ssize_t bytes_recepcion = recv(client_socket, buffer_recepcion, 1024, 0);
+                    if (bytes_recepcion < 0)
                     {
-                        ChatSistOS__User *user_l_response = malloc(sizeof(ChatSistOS__User));
-                        chat_sist_os__user__init(user_l_response);
-                        user_l_response->user_name = clients[i].username;
-                        user_l_response->user_ip = clients[i].user_ip;
-                        user_l_response->user_state = clients[i].status;
-                        users_online.users[i] = user_l_response;
+                        ERRORMensaje("[CLIENT-ERROR]: Recepcion de lista de usuarios fallida\n");
                     }
 
-                    // Se serializa la respuesta
-                    size_t response_size = chat_sist_os__users_online__get_packed_size(&users_online);
-                    uint8_t *response_buffer = malloc(response_size);
-                    chat_sist_os__users_online__pack(&users_online, response_buffer);
-
-                    // Se envía la respuesta al cliente que se acaba de conectar
-                    ssize_t bytes_sent = send(client_socket, response_buffer, response_size, 0);
-                    if (bytes_sent < 0)
+                    ChatSistOS__UserOption *usr_op_a = chat_sist_os__user_option__unpack(NULL, bytes_recepcion, buffer_recepcion);
+                    if (usr_op_a == NULL)
                     {
-                        perror("[SERVER-ERROR]: Envío de respuesta fallido\n");
-                        exit(EXIT_FAILURE);
+                        ERRORMensaje("Error al deserializar los datos recibidos del servidor");
                     }
 
-                    // Se libera la memoria utilizada
-                    for (int i = 0; i < cantidad_clientes; i++)
-                    {
-                        free(users_online.users[i]);
+                    if(usr_op_a->userlist->list == 1){
+                        ChatSistOS__UsersOnline users_online = CHAT_SIST_OS__USERS_ONLINE__INIT;
+                        users_online.n_users = cantidad_clientes;
+                        users_online.users = malloc(sizeof(ChatSistOS__User *) * cantidad_clientes);
+                        for (int i = 0; i < cantidad_clientes; i++)
+                        {
+                            ChatSistOS__User *user_l_response = malloc(sizeof(ChatSistOS__User));
+                            chat_sist_os__user__init(user_l_response);
+                            user_l_response->user_name = clients[i].username;
+                            user_l_response->user_ip = clients[i].user_ip;
+                            user_l_response->user_state = clients[i].status;
+                            users_online.users[i] = user_l_response;
+                        }
+
+                        ChatSistOS__Answer uo_answer = CHAT_SIST_OS__ANSWER__INIT;
+                        uo_answer.response_message = "Enviando listado de usuarios...";
+                        uo_answer.response_status_code = 200;
+                        uo_answer.users_online = &users_online;
+
+                        size_t response_size_uo = chat_sist_os__answer__get_packed_size(&uo_answer);
+                        uint8_t *response_buffer_uo = malloc(response_size_uo);
+                        chat_sist_os__answer__pack(&uo_answer, response_buffer_uo);
+
+                        // Se envía la respuesta al cliente que se acaba de conectar
+                        ssize_t bytes_sent = send(client_socket, response_buffer_uo, response_size_uo, 0);
+                        if (bytes_sent < 0)
+                        {
+                            perror("[SERVER-ERROR]: Envío de respuesta fallido\n");
+                            exit(EXIT_FAILURE);
+                        }
+
+                        // Se libera la memoria utilizada
+                        for (int i = 0; i < cantidad_clientes; i++)
+                        {
+                            free(users_online.users[i]);
+                        }
+                        free(users_online.users);
+                        free(response_buffer_uo);
                     }
-                    free(users_online.users);
-                    free(response_buffer);
+
+                    chat_sist_os__user_option__free_unpacked(usr_op_a, NULL);
+                    
                 }
                 else if (user_option->op == 5)
                 {
@@ -403,18 +465,19 @@ void *handle_newclient(void *arg)
                     {
                         ERRORMensaje("[CLIENT-ERROR]: Recepcion de lista de usuarios fallida\n");
                     }
-                    ChatSistOS__NewUser *received_user = chat_sist_os__new_user__unpack(NULL, bytes_recepcion, buffer_recepcion);
-                    if (received_user == NULL)
+
+                    ChatSistOS__UserOption *usr_op = chat_sist_os__user_option__unpack(NULL, bytes_recepcion, buffer_recepcion);
+                    if (usr_op == NULL)
                     {
                         ERRORMensaje("Error al deserializar los datos recibidos del servidor");
                     }
+                    
+                    printf("Buscando usuario: %s...\n", usr_op->userlist->user_name);
 
-                    printf("Buscando usuario: %s...\n", received_user->username);
-
-                    ChatSistOS__User *user_response = find_user(received_user->username);
+                    ChatSistOS__User *user_response = find_user(usr_op->userlist->user_name);
                     ChatSistOS__Answer response = CHAT_SIST_OS__ANSWER__INIT;
 
-                    if (user_response == NULL)
+                    if (user_response == NULL || usr_op->userlist->list == 1)
                     {
                         answer.response_status_code = 400;
                         answer.response_message = "Usuario no encontrado";
@@ -450,12 +513,14 @@ void *handle_newclient(void *arg)
                         free(buffer_envioB);
                     }
 
-                    chat_sist_os__new_user__free_unpacked(received_user, NULL);
+                    chat_sist_os__user_option__free_unpacked(usr_op, NULL);
                 }
+
                 else if (user_option->op == 6)
                 {
                     printf("6\n");
                 }
+
                 else if (user_option == NULL || user_option->op == 7 || user_option->op == 0)
                 {
                     int index = search_user(user.username, user.user_ip);
@@ -553,9 +618,6 @@ int main(int argc, char **argv)
             printf("[SERVER]: Socket asociado exitosamente\n");
         }
 
-        // listen espera las conexiones
-        // primer argumento es el socket del servidor
-        // segundo argumento la capacidad de cola
         if (listen(server_fd, MAX_CLIENTS) != 0)
         {
             perror("[SERVER-ERROR]: Socket listen fallido");
@@ -566,16 +628,8 @@ int main(int argc, char **argv)
             printf("[SERVER]: Escuchando en el puerto %d\n", puerto);
         }
 
-        fd_set read_fds;
-        struct timeval tv;
-        tv.tv_sec = 0;
-        tv.tv_usec = 100000;
-
         while (1)
         {
-
-            // Imprimir listado de clientes activos
-            // listado_clientes();
 
             client_fd = accept(server_fd, (struct sockaddr *)&client, (socklen_t *)&addrlenclient);
             if (client_fd < 0)
@@ -583,8 +637,6 @@ int main(int argc, char **argv)
                 perror("[SERVER-ERROR]: Conexion no aceptada\n");
                 exit(EXIT_FAILURE);
             }
-
-            // printf("[SERVER]: %s conectado desde la ip: %s y puerto: %d\n", buffer_rx, inet_ntoa(client.sin_addr), ntohs(client.sin_port));
 
             pthread_t thread;
             int pthread_result = pthread_create(&thread, NULL, handle_newclient, (void *)&client_fd);
