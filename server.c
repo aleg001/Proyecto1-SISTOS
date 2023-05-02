@@ -170,24 +170,48 @@ void *handle_newclient(void *arg)
                 switch (user_option->op)
                 {
                 case 1:
-                    printf("Opcion 1\n");
 
-                    if (user_option->message != NULL)
-                    {
-                        printf("Mensaje: %s\n", user_option->message);
-                        for (int i = 0; i < cantidad_clientes; i++)
-                        {
-                            if (clients[i].status == 1)
-                            {
-                                printf("Enviando mensaje a: %s\n", clients[i].username);
-                                if (send(clients[i].sockfd, buffer_option, bytesRecibidos, 0) < 0)
-                                {
-                                    perror("[SERVER-ERROR]: Envio de respuesta fallido\n");
-                                    exit(EXIT_FAILURE);
-                                }
-                            }
-                        }
-                    }
+                    // if (user_option->message != NULL)
+                    // {
+                    //     printf("Mensaje: %s\n", user_option->message);
+
+                    //     // create a message struct
+                    //     ChatSistOS__Message msg = CHAT_SIST_OS__MESSAGE__INIT;
+                    //     msg.message_sender = user.username;
+                    //     msg.message_content = user_option->message;
+                    //     msg.message_private = 0;
+
+                    //     // pack the message
+                    //     size_t msg_size = chat_sist_os__message__get_packed_size(&msg);
+                    //     uint8_t *msg_buffer = malloc(msg_size);
+                    //     chat_sist_os__message__pack(&msg, msg_buffer);
+
+                    //     // send the message to all clients
+                    //     for (int i = 0; i < cantidad_clientes; i++)
+                    //     {
+                    //         if (clients[i].status == 1)
+                    //         {
+
+                    //             if (send(clients[i].sockfd, msg_buffer, msg_size, 0) < 0)
+                    //             {
+                    //                 if (errno == EPIPE)
+                    //                 {
+                    //                     printf("Error sending message to client %s: connection closed.\n", clients[i].username);
+
+                    //                     remove_users(i);
+                    //                     continue;
+                    //                 }
+                    //                 else
+                    //                 {
+                    //                     perror("[SERVER-ERROR]: Envio de respuesta fallido\n");
+                    //                     exit(EXIT_FAILURE);
+                    //                 }
+                    //             }
+                    //         }
+                    //     }
+
+                    //     free(msg_buffer);
+                    // }
                     break;
 
                 case 2:
