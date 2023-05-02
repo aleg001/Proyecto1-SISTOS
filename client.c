@@ -55,16 +55,55 @@ void MENU()
     }
 }
 
+void *client_listening(void *arg)
+{
+    int client_socket = *(int *)arg;
+
+    while (1)
+    {
+        uint8_t recv_buffer[BUFFER_SIZE];
+        ssize_t recv_size = recv(client_socket, recv_buffer, sizeof(recv_buffer), 0);
+
+        if (recv_size < 0)
+        {
+            ERRORMensaje("ERROR: Error al recibir la respuesta\n");
+            exit(EXIT_FAILURE);
+        }
+        else if (recv_size == 0)
+        {
+            ERRORMensaje("ERROR: Servidor desconectado\n");
+            exit(EXIT_FAILURE);
+        }
+
+        ChatSistOS__Answer *response = chat_sist_os__answer__unpack(NULL, recv_size, recv_buffer);
+
+        if (response == NULL)
+        {
+            ERRORMensaje("ERROR: No se pudo desempaquetar el mensaje recibido\n");
+            continue;
+        }
+
+        if (response->op == OP_CHAT)
+        {
+            printf("[%s] -> [TODOS]: %s\n", response->user->user_name, response->response_message);
+        }
+
+        chat_sist_os__answer__free_unpacked(response, NULL);
+    }
+
+    return NULL;
+}
+
 void AYUDA()
 {
     const char *comandos[] = {
-        "chat <mensaje>: envía un mensaje a todos los usuarios conectados",
-        "dm <usuario> <mensaje>: envía un mensaje directo al usuario especificado",
-        "status <estado>: cambia tu estado al valor especificado (0: activo, 1: ocupado, 2: inactivo)",
-        "usuarios: muestra una lista de todos los usuarios conectados",
-        "usuario <nombredeusuario>: muestra información sobre el usuario especificado",
-        "help: muestra este mensaje de ayuda",
-        "exit: sale del cliente de chat"};
+        "1: <mensaje>: envía un mensaje a todos los usuarios conectados",
+        "2: <usuario> <mensaje>: envía un mensaje directo al usuario especificado",
+        "3: <estado>: cambia tu estado al valor especificado (0: activo, 1: ocupado, 2: inactivo)",
+        "4: muestra una lista de todos los usuarios conectados",
+        "5 <nombredeusuario>: muestra información sobre el usuario especificado",
+        "6: muestra este mensaje de ayuda",
+        "7: sale del cliente de chat"};
 
     printf("Sintaxis comandos:\n");
     for (int i = 0; i < sizeof(comandos) / sizeof(comandos[0]); i++)
@@ -166,6 +205,7 @@ int main(int argc, const char **argv)
         {
 
             int veri = 1;
+
             while (veri)
             {
                 MENU();
@@ -202,13 +242,13 @@ int main(int argc, const char **argv)
                 switch (opcion)
                 {
                 case OP_CHAT:
-                    printf("Mensaje general\n\n");
 
                     if (fgets(input, sizeof(input), stdin) == NULL)
                     {
                         printf("FORMATO INCORRECTO\n");
                         continue;
                     }
+                    printf("Ingrese mensaje: ");
                     input[strcspn(input, "\n")] = '\0';
 
                     char *txt_mensaje = strtok(input, " ");
@@ -223,25 +263,36 @@ int main(int argc, const char **argv)
                     }
 
                     ChatSistOS__Message chat_message = CHAT_SIST_OS__MESSAGE__INIT;
-                    chat_message.message_private = 0;
+                    chat_message.message_private = "0";
                     chat_message.message_destination = "";
                     chat_message.message_content = txt_mensaje;
                     chat_message.message_sender = username;
 
                     size_t serializado = chat_sist_os__message__get_packed_size(&chat_message);
+
                     uint8_t *buffer = malloc(serializado);
-                    chat_sist_os__message__pack(&chat_message, buffer);
+                    chat_sist_os__user_option__pack(&option_user, buffer);
 
                     if (send(cliente_fd, buffer, serializado, 0) < 0)
                     {
                         ERRORMensaje("ERROR: Envio de mensaje fallido\n");
+                        continue;
                     }
                     else
                     {
                         free(buffer);
                         printf("[CLIENT]: Mensaje enviado\n");
+
+                        pthread_t listener_thread;
+                        int thread_status = pthread_create(&listener_thread, NULL, client_listening, (void *)&cliente_fd);
+                        if (thread_status != 0)
+                        {
+                            ERRORMensaje("[CLIENT-ERROR]: No se pudo crear el hilo de escucha\n");
+                            exit(EXIT_FAILURE);
+                        }
+
+                        continue;
                     }
-                    continue;
                     break;
 
                 case OP_DM:
