@@ -16,6 +16,7 @@
 #include <ctype.h>
 #include <ifaddrs.h>
 #include <net/if.h>
+#include <pthread.h>
 
 #define BUFFER_SIZE 1024
 
