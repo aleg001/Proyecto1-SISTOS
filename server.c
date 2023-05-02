@@ -9,6 +9,7 @@
 #include <pthread.h> //Hilos
 #include <arpa/inet.h> // Manipulacion direcciones IP
 #include "chat.pb-c.h" // Protobuf
+#pragma GCC ignored - Wall
 
 #define MAX_CLIENTS 50
 
@@ -185,7 +186,57 @@ void* handle_newclient(void *arg){
 
                 // Manejar opciones
 
-                if(user_option->op == 4){
+                if(user_option->op == 1){
+                    // if (user_option->message != NULL)
+                    // {
+                    //     printf("Mensaje: %s\n", user_option->message);
+
+                    //     // create a message struct
+                    //     ChatSistOS__Message msg = CHAT_SIST_OS__MESSAGE__INIT;
+                    //     msg.message_sender = user.username;
+                    //     msg.message_content = user_option->message;
+                    //     msg.message_private = 0;
+
+                    //     // pack the message
+                    //     size_t msg_size = chat_sist_os__message__get_packed_size(&msg);
+                    //     uint8_t *msg_buffer = malloc(msg_size);
+                    //     chat_sist_os__message__pack(&msg, msg_buffer);
+
+                    //     // send the message to all clients
+                    //     for (int i = 0; i < cantidad_clientes; i++)
+                    //     {
+                    //         if (clients[i].status == 1)
+                    //         {
+
+                    //             if (send(clients[i].sockfd, msg_buffer, msg_size, 0) < 0)
+                    //             {
+                    //                 if (errno == EPIPE)
+                    //                 {
+                    //                     printf("Error sending message to client %s: connection closed.\n", clients[i].username);
+
+                    //                     remove_users(i);
+                    //                     continue;
+                    //                 }
+                    //                 else
+                    //                 {
+                    //                     perror("[SERVER-ERROR]: Envio de respuesta fallido\n");
+                    //                     exit(EXIT_FAILURE);
+                    //                 }
+                    //             }
+                    //         }
+                    //     }
+
+                    //     free(msg_buffer);
+                    // }
+                    break;
+                }
+                else if(user_option->op == 2){
+                    printf("2\n");
+                }
+                else if(user_option->op == 3){
+                    printf("3\n");
+                }
+                else if(user_option->op == 4){
                     ChatSistOS__UsersOnline users_online = CHAT_SIST_OS__USERS_ONLINE__INIT;
                     users_online.n_users = cantidad_clientes;
                     users_online.users = malloc(sizeof(ChatSistOS__User*) * cantidad_clientes);
@@ -266,6 +317,9 @@ void* handle_newclient(void *arg){
                     }
 
                     chat_sist_os__new_user__free_unpacked(received_user, NULL);
+
+                } else if (user_option->op == 6){
+                    printf("6\n");
 
                 } else if (user_option == NULL || user_option->op == 7 || user_option->op == 0) {
                     int index = search_user(user.username, user.user_ip);
