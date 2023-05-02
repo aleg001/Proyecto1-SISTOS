@@ -85,7 +85,25 @@ void *listen_server(void *arg)
             continue;
         }
 
-        printf("[SERVER (%d)]->[%s]: %s\n", answer->response_status_code, answer->user->user_name, answer->response_message);
+        const char *response_username = "UNKNOWN";
+        if (answer->user != NULL && answer->user->user_name != NULL)
+        {
+            response_username = answer->user->user_name;
+        }
+
+        if (answer->response_message != NULL)
+        {
+            // Imprimir mensaje
+
+            printf("-> ");
+
+            printf("\n");
+        }
+        else
+        {
+            printf("ERROR: No se pudo leer el mensaje de respuesta\n");
+        }
+
         chat_sist_os__answer__free_unpacked(answer, NULL);
     }
 
@@ -353,7 +371,6 @@ int main(int argc, const char **argv)
                         printf("[CLIENT]: Mensaje enviado\n");
                         continue;
                     }
-                    break;
 
                 case OP_STATUS:
                     printf("Cambiando status...\n");
