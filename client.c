@@ -10,12 +10,13 @@
 #include "chat.pb-c.h"
 #include <protobuf-c/protobuf-c.h>
 #include <arpa/inet.h>
-#include <sys/socket.h>
 #include <netdb.h>
 #include <curl/curl.h>
 #include <ctype.h>
 #include <ifaddrs.h>
 #include <net/if.h>
+#include <time.h>
+#include <sys/select.h>
 #include <signal.h>
 
 #define BUFFER_SIZE 1024
@@ -90,20 +91,20 @@ void *client_listening(void *arg)
 void AYUDA()
 {
     const char *comandos[] = {
-        "1: <mensaje>: envía un mensaje a todos los usuarios conectados",
-        "2: <usuario> <mensaje>: envía un mensaje directo al usuario especificado",
-        "3: <estado>: cambia tu estado al valor especificado (0: activo, 1: ocupado, 2: inactivo)",
-        "4: muestra una lista de todos los usuarios conectados",
-        "5 <nombredeusuario>: muestra información sobre el usuario especificado",
-        "6: muestra este mensaje de ayuda",
-        "7: sale del cliente de chat"};
+        "chat <mensaje>: envía un mensaje a todos los usuarios conectados",
+        "dm <usuario> <mensaje>: envía un mensaje directo al usuario especificado",
+        "status <estado>: cambia tu estado al valor especificado (0: activo, 1: ocupado, 2: inactivo)",
+        "usuarios: muestra una lista de todos los usuarios conectados",
+        "usuario <nombredeusuario>: muestra información sobre el usuario especificado",
+        "help: muestra este mensaje de ayuda",
+        "exit: sale del cliente de chat"};
 
-    printf("Sintaxis comandos:\n");
+    printf("\nSintaxis comandos:\n");
     for (int i = 0; i < sizeof(comandos) / sizeof(comandos[0]); i++)
     {
         printf("- %s\n", comandos[i]);
     }
-    printf("\n");
+
 }
 
 void ERRORMensaje(const char *message)
@@ -115,10 +116,11 @@ void ERRORMensaje(const char *message)
 int main(int argc, const char **argv)
 {
 
-    char *username, *IPserver;
+    char *username;
+    const char *IPserver;
     int puerto;
 
-    username = argv[1];
+    username = (char *)argv[1];
     IPserver = argv[2];
     puerto = atoi(argv[3]);
 
@@ -177,13 +179,6 @@ int main(int argc, const char **argv)
         }
 
         free(buffer_tx);
-        pthread_t listener_thread;
-
-        if (pthread_create(&listener_thread, NULL, client_listening, (void *)&cliente_fd) < 0)
-        {
-            ERRORMensaje("[CLIENT-ERROR]: No se pudo crear el hilo de escucha\n");
-            exit(EXIT_FAILURE);
-        }
 
         uint8_t buffer_rx[1024];
         ssize_t bytesRecibidos = recv(cliente_fd, buffer_rx, 1024, 0);
@@ -203,11 +198,39 @@ int main(int argc, const char **argv)
 
         if (answer->response_status_code != 400)
         {
-
             int veri = 1;
-
             while (veri)
             {
+                // MENU();
+                // printf("Ingrese comando: ");
+                // fflush(stdout);
+
+                // fd_set read_fds;
+                // FD_ZERO(&read_fds);
+                // FD_SET(STDIN_FILENO, &read_fds);
+
+                // struct timeval timeout;
+                // timeout.tv_sec = 15;  // Tiempo de espera en segundos
+                // timeout.tv_usec = 0;
+
+                // int res = select(STDIN_FILENO + 1, &read_fds, NULL, NULL, &timeout);
+                // if (res == 0) {
+                //     // Timeout alcanzado
+                //     printf("\nInactivo\n");
+                //     continue;
+                // }
+                // else if (FD_ISSET(STDIN_FILENO, &read_fds)) {
+                //     // Entrada de usuario disponible
+                //     if (fgets(input, sizeof(input), stdin) == NULL) {
+                //         // En caso de error en la entrada, continuar el ciclo
+                //         continue;
+                //     }
+                //     input[strcspn(input, "\r\n")] = '\0';
+                //     if (strlen(input) == 0) {
+                //         continue;
+                //     }
+                // }
+
                 MENU();
                 char chat_input[BUFFER_SIZE];
                 printf("\nIngrese comando: ");
@@ -242,107 +265,128 @@ int main(int argc, const char **argv)
                 switch (opcion)
                 {
                 case OP_CHAT:
-                    printf("Ingrese mensaje: ");
-                    if (fgets(input, sizeof(input), stdin) == NULL)
-                    {
-                        printf("FORMATO INCORRECTO\n");
-                        continue;
-                    }
-                    input[strcspn(input, "\n")] = '\0';
+                    printf("Mensaje general\n\n");
 
-                    char *txt_mensaje = strtok(input, " ");
-                    txt_mensaje = strtok(NULL, "");
+                    // printf("Ingrese mensaje: ");
+                    // if (fgets(input, sizeof(input), stdin) == NULL)
+                    // {
+                    //     printf("FORMATO INCORRECTO\n");
+                    //     continue;
+                    // }
+                    // input[strcspn(input, "\n")] = '\0';
 
-                    if (txt_mensaje == NULL || strlen(txt_mensaje) == 0)
-                    {
-                        printf("FORMATO INCORRECTO\n");
-                        continue;
-                    }
+                    // char *txt_mensaje = strtok(input, " ");
+                    // txt_mensaje = strtok(NULL, "");
 
-                    ChatSistOS__Message chat_message = CHAT_SIST_OS__MESSAGE__INIT;
-                    chat_message.message_private = "0";
-                    chat_message.message_destination = "";
-                    chat_message.message_sender = username;
+                    // if (txt_mensaje == NULL || strlen(txt_mensaje) == 0)
+                    // {
+                    //     printf("FORMATO INCORRECTO\n");
+                    //     continue;
+                    // }
 
-                    chat_message.message_content = strdup(txt_mensaje);
+                    // ChatSistOS__Message chat_message = CHAT_SIST_OS__MESSAGE__INIT;
+                    // chat_message.message_private = "0";
+                    // chat_message.message_destination = "";
+                    // chat_message.message_sender = username;
 
-                    ChatSistOS__UserOption option_user = CHAT_SIST_OS__USER_OPTION__INIT;
-                    option_user.op = opcion;
-                    option_user.message = &chat_message;
+                    // chat_message.message_content = strdup(txt_mensaje);
 
-                    size_t serializar = chat_sist_os__user_option__get_packed_size(&option_user);
-                    uint8_t *buffer = malloc(serializar);
-                    chat_sist_os__user_option__pack(&option_user, buffer);
+                    // ChatSistOS__UserOption option_user = CHAT_SIST_OS__USER_OPTION__INIT;
+                    // option_user.op = opcion;
+                    // option_user.message = &chat_message;
 
-                    if (send(cliente_fd, buffer, serializar, 0) < 0)
-                    {
-                        ERRORMensaje("ERROR: Envio de mensaje fallido\n");
-                        continue;
-                    }
-                    else
-                    {
-                        free(buffer);
-                        printf("[CLIENT]: Mensaje enviado\n");
-                    }
+                    // size_t serializar = chat_sist_os__user_option__get_packed_size(&option_user);
+                    // uint8_t *buffer = malloc(serializar);
+                    // chat_sist_os__user_option__pack(&option_user, buffer);
 
-                    free(chat_message.message_content);
+                    // if (send(cliente_fd, buffer, serializar, 0) < 0)
+                    // {
+                    //     ERRORMensaje("ERROR: Envio de mensaje fallido\n");
+                    //     continue;
+                    // }
+                    // else
+                    // {
+                    //     free(buffer);
+                    //     printf("[CLIENT]: Mensaje enviado\n");
+                    // }
+
+                    // free(chat_message.message_content);
                     break;
 
                 case OP_DM:
                     printf("Mensaje privado\n\n");
-                    if (fgets(input, sizeof(input), stdin) == NULL)
-                    {
-                        printf("FORMATO INCORRECTO\n");
-                        continue;
-                    }
-                    input[strcspn(input, "\n")] = '\0';
+                    // if (fgets(input, sizeof(input), stdin) == NULL)
+                    // {
+                    //     printf("FORMATO INCORRECTO\n");
+                    //     continue;
+                    // }
+                    // input[strcspn(input, "\n")] = '\0';
 
-                    char *usuarioname2 = strtok(input, " ");
-                    if (usuarioname2 == NULL)
-                    {
-                        printf("FORMATO INCORRECTO\n");
-                        continue;
-                    }
-                    char *dm_mensaje = strtok(NULL, "");
-                    if (dm_mensaje == NULL)
-                    {
-                        printf("FORMATO INCORRECTO\n");
-                        continue;
-                    }
+                    // char *usuarioname2 = strtok(input, " ");
+                    // if (usuarioname2 == NULL)
+                    // {
+                    //     printf("FORMATO INCORRECTO\n");
+                    //     continue;
+                    // }
+                    // char *dm_mensaje = strtok(NULL, "");
+                    // if (dm_mensaje == NULL)
+                    // {
+                    //     printf("FORMATO INCORRECTO\n");
+                    //     continue;
+                    // }
 
-                    ChatSistOS__Message dm_message = CHAT_SIST_OS__MESSAGE__INIT;
-                    dm_message.message_private = 1;
-                    dm_message.message_destination = usuarioname2;
-                    dm_message.message_content = strdup(dm_mensaje);
-                    dm_message.message_sender = strdup(username);
+                    // ChatSistOS__Message dm_message = CHAT_SIST_OS__MESSAGE__INIT;
+                    // dm_message.message_private = 1;
+                    // dm_message.message_destination = usuarioname2;
+                    // dm_message.message_content = strdup(dm_mensaje);
+                    // dm_message.message_sender = strdup(username);
 
-                    size_t dm_message_size = chat_sist_os__message__get_packed_size(&dm_message);
-                    uint8_t *dm_message_buffer = malloc(dm_message_size);
-                    chat_sist_os__message__pack(&dm_message, dm_message_buffer);
+                    // size_t dm_message_size = chat_sist_os__message__get_packed_size(&dm_message);
+                    // uint8_t *dm_message_buffer = malloc(dm_message_size);
+                    // chat_sist_os__message__pack(&dm_message, dm_message_buffer);
 
-                    printf("Mensaje: %s\n", dm_mensaje);
-                    printf("Destinatario: %s\n", usuarioname2);
+                    // printf("Mensaje: %s\n", dm_mensaje);
+                    // printf("Destinatario: %s\n", usuarioname2);
 
-                    if (send(cliente_fd, dm_message_buffer, dm_message_size, 0) < 0)
-                    {
-                        ERRORMensaje("ERROR: Envio de mensaje fallido\n");
-                        continue;
-                    }
-                    else
-                    {
-                        free(dm_message_buffer);
-                        free(dm_message.message_content);
-                        free(dm_message.message_sender);
-                        printf("[CLIENT]: Mensaje enviado\n");
-                        continue;
-                    }
+                    // if (send(cliente_fd, dm_message_buffer, dm_message_size, 0) < 0)
+                    // {
+                    //     ERRORMensaje("ERROR: Envio de mensaje fallido\n");
+                    //     continue;
+                    // }
+                    // else
+                    // {
+                    //     free(dm_message_buffer);
+                    //     free(dm_message.message_content);
+                    //     free(dm_message.message_sender);
+                    //     printf("[CLIENT]: Mensaje enviado\n");
+                    //     continue;
+                    // }
 
                     break;
 
                 case OP_STATUS:
-                    printf("Status\n\n");
-                    // Se obtiene el mensaje del servidor
+                    printf("Cambiando status...\n");
 
+                    ChatSistOS__Status status_usr = CHAT_SIST_OS__STATUS__INIT;
+                    status_usr.user_name = answer->user->user_name;
+                    status_usr.user_state = answer->user->user_state;
+                    
+                    ChatSistOS__UserOption usr_op_s = CHAT_SIST_OS__USER_OPTION__INIT;
+                    usr_op_s.op = opcion;
+                    usr_op_s.status = &status_usr;
+
+                    size_t package_size_s = chat_sist_os__user_option__get_packed_size(&usr_op_s);
+                    uint8_t *buffer_option_s = malloc(package_size_s);
+                    chat_sist_os__user_option__pack(&usr_op_s, buffer_option_s);
+
+                    if (send(cliente_fd, buffer_option_s, package_size_s, 0) < 0)
+                    {
+                        ERRORMensaje("[CLIENT-ERROR]: Envio de usuario fallido\n");
+                    }
+
+                    free(buffer_option_s);
+
+                    // Se obtiene el mensaje del servidor
                     uint8_t buffer_rx_b[1024];
                     ssize_t bytesRecibidos_b = recv(cliente_fd, buffer_rx_b, 1024, 0);
                     if (bytesRecibidos_b < 0)
@@ -358,26 +402,50 @@ int main(int argc, const char **argv)
                     }
                     printf("[SERVER (%d)]->[%s]: %s\n", answer_b->response_status_code, answer_b->user->user_name, answer_b->response_message);
 
+                    chat_sist_os__answer__free_unpacked(answer_b, NULL);
                     break;
 
                 case OP_USUARIOS:
                     printf("Listado usuarios\n");
 
-                    uint8_t buffer_recepcion[1024];
-                    ssize_t bytes_recepcion = recv(cliente_fd, buffer_recepcion, 1024, 0);
-                    if (bytes_recepcion < 0)
+                    ChatSistOS__UserList new_user_all = CHAT_SIST_OS__USER_LIST__INIT;
+                    new_user_all.list = 1;
+                    new_user_all.user_name = answer->user->user_name; 
+
+                    ChatSistOS__UserOption usr_op_a = CHAT_SIST_OS__USER_OPTION__INIT;
+                    usr_op_a.op = opcion;
+                    usr_op_a.userlist = &new_user_all;
+
+                    size_t package_size_all = chat_sist_os__user_option__get_packed_size(&usr_op_a);
+                    uint8_t *buffer_option_all = malloc(package_size_all);
+                    chat_sist_os__user_option__pack(&usr_op_a, buffer_option_all);
+
+                    if (send(cliente_fd, buffer_option_all, package_size_all, 0) < 0)
+                    {
+                        ERRORMensaje("[CLIENT-ERROR]: Envio de usuario fallido\n");
+                    }
+
+                    free(buffer_option_all);
+
+                    uint8_t buffer_recepcion_all[1024];
+                    ssize_t bytes_recepcion_all = recv(cliente_fd, buffer_recepcion_all, 1024, 0);
+                    if (bytes_recepcion_all < 0)
                     {
                         ERRORMensaje("[CLIENT-ERROR]: Recepcion de lista de usuarios fallida\n");
                     }
-                    ChatSistOS__UsersOnline *users_online = chat_sist_os__users_online__unpack(NULL, bytes_recepcion, buffer_recepcion);
-                    if (users_online == NULL)
+
+                    ChatSistOS__Answer *answer_uo = chat_sist_os__answer__unpack(NULL, bytes_recepcion_all, buffer_recepcion_all);
+                    if (answer_uo == NULL)
                     {
-                        ERRORMensaje("Error al deserializar los datos recibidos del servidor");
+                        printf("ERROR: No se pudo desempaquetar el mensaje recibido\n");
+                        return -1;
                     }
 
-                    for (int i = 0; i < users_online->n_users; i++)
+                    printf("[SERVER (%d)]->[%s]: %s\n", answer_uo->response_status_code, answer->user->user_name, answer_uo->response_message);
+
+                    for (int i = 0; i < answer_uo->users_online->n_users; i++)
                     {
-                        ChatSistOS__User *user = users_online->users[i];
+                        ChatSistOS__User *user = answer_uo->users_online->users[i];
                         char status[25] = "Estado desconocido";
                         if (user->user_state == 1)
                         {
@@ -394,69 +462,74 @@ int main(int argc, const char **argv)
                         printf("- Usuario: %s con ip (%s) -> status: (%s)\n", user->user_name, user->user_ip, status);
                     }
 
-                    chat_sist_os__users_online__free_unpacked(users_online, NULL);
+                    chat_sist_os__answer__free_unpacked(answer_uo, NULL);
                     printf("\n");
                     break;
 
                 case OP_USUARIO:
-                    printf("Informacion usuario\n\n");
+                    printf("Informacion de usuario\n");
 
                     char usuarioname[50];
                     printf("Ingrese su nombre de usuario: ");
                     fgets(usuarioname, 50, stdin);
                     usuarioname[strcspn(usuarioname, "\n")] = 0;
 
-                    ChatSistOS__NewUser new_us = CHAT_SIST_OS__NEW_USER__INIT;
-                    new_us.username = usuarioname;
+                    ChatSistOS__UserList new_user_sp = CHAT_SIST_OS__USER_LIST__INIT;
+                    new_user_sp.list = 0;
+                    new_user_sp.user_name = usuarioname; 
 
-                    size_t package_size = chat_sist_os__new_user__get_packed_size(&new_us);
-                    uint8_t *buffer_option = malloc(package_size);
-                    chat_sist_os__new_user__pack(&new_us, buffer_option);
+                    ChatSistOS__UserOption usr_op_sp = CHAT_SIST_OS__USER_OPTION__INIT;
+                    usr_op_sp.op = opcion;
+                    usr_op_sp.userlist = &new_user_sp;
 
-                    if (send(cliente_fd, buffer_option, package_size, 0) < 0)
+                    size_t package_size_sp = chat_sist_os__user_option__get_packed_size(&usr_op_sp);
+                    uint8_t *buffer_option_sp = malloc(package_size_sp);
+                    chat_sist_os__user_option__pack(&usr_op_sp, buffer_option_sp);
+
+                    if (send(cliente_fd, buffer_option_sp, package_size_sp, 0) < 0)
                     {
                         ERRORMensaje("[CLIENT-ERROR]: Envio de usuario fallido\n");
                     }
 
-                    free(buffer_option);
+                    free(buffer_option_sp);
 
-                    uint8_t buffer_rx[1024];
-                    ssize_t bytesRecibidos = recv(cliente_fd, buffer_rx, 1024, 0);
-                    if (bytesRecibidos < 0)
+                    uint8_t buffer_uo[1024];
+                    ssize_t bytesRecibidos_uo = recv(cliente_fd, buffer_uo, 1024, 0);
+                    if (bytesRecibidos_uo < 0)
                     {
                         ERRORMensaje("[CLIENT-ERROR]: Recepcion de respuesta fallida\n");
                     }
 
                     // Se obtiene el mensaje del servidor
-                    ChatSistOS__Answer *answer = chat_sist_os__answer__unpack(NULL, bytesRecibidos, buffer_rx);
-                    if (answer == NULL)
+                    ChatSistOS__Answer *answer_sp = chat_sist_os__answer__unpack(NULL, bytesRecibidos_uo, buffer_uo);
+                    if (answer_sp == NULL)
                     {
                         printf("ERROR: No se pudo desempaquetar el mensaje recibido\n");
                         return -1;
                     }
 
-                    if (answer->response_status_code != 400)
+                    if (answer_sp->response_status_code != 400)
                     {
-                        printf("[SERVER]: %s | IP: %s\n", answer->response_message, answer->user->user_ip);
+                        printf("[SERVER]: %s | IP: %s\n", answer_sp->response_message, answer_sp->user->user_ip);
                     }
                     else
                     {
-                        printf("[SERVER]: %s\n", answer->response_message);
+                        printf("[SERVER]: %s\n", answer_sp->response_message);
                     }
+                    chat_sist_os__answer__free_unpacked(answer_sp, NULL);
                     break;
 
                 case OP_HELP:
-                    printf("Ayuda\n\n");
                     AYUDA();
                     break;
 
                 case OP_EXIT:
-                    printf("Salir\n\n");
+                    printf("Saliendo y liberando recursos...\n\n");
                     close(cliente_fd);
                     veri = 0;
                     break;
                 default:
-                    printf("Comando INVALIDO, escribe 'help' pa q te ayudemos\n");
+                    printf("Opcion INVALIDO, selecciona la opcion help (6) para ayuda\n");
                     break;
                 }
             }
