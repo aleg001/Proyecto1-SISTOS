@@ -294,36 +294,24 @@ int main(int argc, const char **argv)
 
                 case OP_STATUS:
                     printf("Status\n\n");
-                    // char *status_str = strtok(NULL, " ");
-                    // if (status_str == NULL)
-                    // {
-                    //     printf("FORMATO INVALIDO DE ESTADO\n");
-                    //     continue;
-                    // }
-                    // int status = atoi(status_str);
-                    // if (status < 0 || status > 2)
-                    // {
-                    //     printf("Estados pueden ser 0, 1 y 2\n");
-                    //     continue;
-                    // }
+                    // Se obtiene el mensaje del servidor
 
-                    // ChatSistOS__Status status_update = CHAT_SIST_OS__STATUS__INIT;
-                    // status_update.user_name = username;
-                    // status_update.user_state = status;
+                    uint8_t buffer_rx_b[1024];
+                    ssize_t bytesRecibidos_b = recv(cliente_fd, buffer_rx_b, 1024, 0);
+                    if (bytesRecibidos_b < 0)
+                    {
+                        ERRORMensaje("[CLIENT-ERROR]: Recepcion de respuesta fallida\n");
+                    }
 
-                    // size_t status_update_size = chat_sist_os__status__get_packed_size(&status_update);
-                    // uint8_t *status_update_buffer = malloc(status_update_size);
-                    // chat_sist_os__status__pack(&status_update, status_update_buffer);
 
-                    // if (send(cliente_fd, status_update_buffer, status_update_size, 0) < 0)
-                    // {
-                    //     ERRORMensaje("ERROR: Envio de estado fallido\n");
-                    // }
-                    // else
-                    // {
-                    //     free(status_update_buffer);
-                    //     printf("[CLIENT]: Estado actualizado\n");
-                    // }
+                    ChatSistOS__Answer *answer_b = chat_sist_os__answer__unpack(NULL, bytesRecibidos_b, buffer_rx_b);
+                    if (answer_b == NULL)
+                    {
+                        printf("ERROR: No se pudo desempaquetar el mensaje recibido\n");
+                        return -1;
+                    }
+                    printf("[SERVER (%d)]->[%s]: %s\n", answer_b->response_status_code, answer_b->user->user_name, answer_b->response_message);
+
                     break;
 
                 case OP_USUARIOS:
