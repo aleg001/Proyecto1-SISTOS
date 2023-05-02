@@ -274,6 +274,7 @@ int main(int argc, const char **argv)
 
                     free(chat_message.message_sender);
                     free(chat_message.message_content);
+
                     break;
 
                 case OP_DM:

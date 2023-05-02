@@ -251,14 +251,12 @@ void *handle_newclient(void *arg)
 
                 if (user_option->op == 1)
                 {
-                    printf("[SERVER]: Broadcast mensaje recibido\n");
-
                     if (user_option->message)
                     {
                         printf("[SERVER]: Mensaje de: %s\n", user_option->message->message_sender);
-                        printf("[SERVER]: Mensaje: %s\n", user_option->message->message_content);
+                        printf("[SERVER]: Contenido: %s\n", user_option->message->message_content);
+                        printf("[SERVER]: Destino: Usuarios conectados\n");
                         ChatSistOS__Message *broadcast_message = user_option->message;
-
                         ChatSistOS__Message new_message = CHAT_SIST_OS__MESSAGE__INIT;
                         new_message.message_private = broadcast_message->message_private;
                         new_message.message_destination = broadcast_message->message_destination ? strdup(broadcast_message->message_destination) : NULL;
@@ -273,9 +271,7 @@ void *handle_newclient(void *arg)
                             answer.op = 1;
                             answer.response_status_code = 200;
                             answer.message = &new_message;
-                            answer.user = &user;
-
-                            printf("CLIENTS AVAILABLE: %s\n", answer.user->user_name);
+                            // answer.user = &user;
 
                             size_t msg_size = chat_sist_os__answer__get_packed_size(&answer);
                             uint8_t *msg_buffer = malloc(msg_size);
