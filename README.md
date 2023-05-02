@@ -17,7 +17,7 @@ La aplicación debe estar separada dos partes:
   - `gcc -o server server.c chat.pb-c.c -lprotobuf-c -lpthread`
   
 - Para compilar el cliente:
-  - `gcc -o client client.c chat.pb-c.c -lprotobuf-c`
+  - `gcc -o client client.c chat.pb-c.c -lprotobuf-c -lpthread`
   
 - Para ejecutar el servidor
   - `./server 9000` (9000 es el puerto donde se escuchara al cliente)
