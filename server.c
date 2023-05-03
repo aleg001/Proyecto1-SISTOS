@@ -102,6 +102,48 @@ void update_user_status(char *username, char *ip, Client cliente)
     }
 }
 
+void *countTime(void *ptr){
+
+    Client *cliente = (Client *) ptr;
+    Client cl = *cliente;
+    
+    time_t inicio, fin;
+
+    inicio = time(NULL);
+
+    fin = time(NULL);
+
+    while(difftime(fin, inicio) < 15) {
+        fin = time(NULL);
+    }
+
+    printf("Usuario [%s] inactivo\n", cl.username);
+    cl.status = 3;
+
+    update_user_status(cl.username, cl.user_ip, cl);
+
+    pthread_exit(NULL);
+    
+}
+
+void reActivate_user(Client cliente)
+{
+    printf("[%s] status: %d\n", cliente.username ,cliente.status);
+    // Revisar si este esta inactivo
+    if (cliente.status == 3 ) {
+        printf("Reactivacion de usuario [%s]\n", cliente.username);
+        cliente.status = 1; // regresamos al default
+
+        // guardamos
+        update_user_status(cliente.username, cliente.user_ip, cliente);
+    }
+    else {
+        printf("No es necesario reactivar [%s]\n", cliente.username);
+    }
+
+    // Si no esta inactivo, no es necesario hacer nada
+}
+
 int search_user(char *username, char *ip)
 {
     for (int i = 0; i < cantidad_clientes; i++)
@@ -232,9 +274,17 @@ void *handle_newclient(void *arg)
             }
 
             free(buffer_envioA);
+            
+            pthread_t time_thread;
 
             while (1)
             {
+
+                if(pthread_create(&time_thread, NULL, countTime, (void*)&user )) {
+                    printf("error\n");
+                }
+
+                
                 // Se obtiene opcion ingresada
                 uint8_t buffer_option[1024];
                 ssize_t bytesRecibidos = recv(client_socket, buffer_option, 1024, 0);
@@ -247,11 +297,21 @@ void *handle_newclient(void *arg)
                 ChatSistOS__UserOption *user_option = chat_sist_os__user_option__unpack(NULL, bytesRecibidos, buffer_option);
                 // printf("Opcion ingresada por %s: %d\n", new_client->username, user_option->op);
 
+                // se tomo una decision, no es necesario seguir tomando el tiemo 
+                if (pthread_cancel(time_thread)) {
+                    fprintf(stderr, "Error cancelling thread\n");
+                }
+
+                // Si se habia desactivado el usuario, reactivarlo
+                reActivate_user(user);
+
                 // Manejar opciones
                 if (user_option->op == 1)
                 {
+
                     if (user_option->message)
                     {
+
                         printf("[SERVER]: Mensaje de: %s\n", user_option->message->message_sender);
                         printf("[SERVER]: Contenido: %s\n", user_option->message->message_content);
                         printf("[SERVER]: Destino: Usuarios conectados\n");
@@ -291,6 +351,7 @@ void *handle_newclient(void *arg)
                 }
                 else if (user_option->op == 2)
                 {
+                    
                     printf("[SERVER]: Mensaje privado\n");
                     int dm_socket_fd = -1;
                     int exists = 0;
@@ -344,6 +405,7 @@ void *handle_newclient(void *arg)
 
                 else if (user_option->op == 3)
                 {
+
                     ChatSistOS__User *new_usr_st = find_user(user_option->status->user_name);
                     if (new_usr_st != NULL)
                     {
@@ -354,12 +416,11 @@ void *handle_newclient(void *arg)
                         }
                         else
                         {
-                            printf("Status de usuario: %d\n", new_usr_st->user_state);
+                            printf("[%s] status antes del cambio: %d\n", user.username, user.status);
 
                             int new_Status_temp = (new_usr_st->user_state == 1) ? 2 : 1;
 
-                            printf("New status: %d\n", new_Status_temp);
-                            printf("%s\n", (new_Status_temp == 1) ? "Ocupado -> En linea" : "En linea -> Ocupado");
+                            printf("[%s] %s\n", user.username, (new_Status_temp == 1) ? "Ocupado -> En linea" : "En linea -> Ocupado");
 
                             user.status = new_Status_temp;
 
@@ -388,6 +449,7 @@ void *handle_newclient(void *arg)
                 }
                 else if (user_option->op == 4)
                 {
+
                     if (user_option->userlist->list == 1)
                     {
                         ChatSistOS__UsersOnline users_online = CHAT_SIST_OS__USERS_ONLINE__INIT;
@@ -432,6 +494,7 @@ void *handle_newclient(void *arg)
                 }
                 else if (user_option->op == 5)
                 {
+                    
                     printf("Buscando usuario: %s...\n", user_option->userlist->user_name);
 
                     ChatSistOS__User *user_response = find_user(user_option->userlist->user_name);
@@ -489,6 +552,11 @@ void *handle_newclient(void *arg)
                         remove_users(index);
                     }
                     break;
+                }
+
+                // Para de tomar el tiempo 
+                if (pthread_join(time_thread, NULL)) {
+                    printf("Error uniendo las partes.\n ");
                 }
 
                 chat_sist_os__user_option__free_unpacked(user_option, NULL);
