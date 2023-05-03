@@ -312,7 +312,7 @@ void *handle_newclient(void *arg)
 
                     if (dm_socket_fd == -1)
                     {
-                        // Destination user not found
+
                         ChatSistOS__Answer answer = CHAT_SIST_OS__ANSWER__INIT;
                         answer.op = 2;
                         answer.response_status_code = 404;
