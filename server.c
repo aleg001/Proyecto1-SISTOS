@@ -370,7 +370,7 @@ void *handle_newclient(void *arg)
                     char *dm_content = dm_message->message_content;
                     char *dm_sender = dm_message->message_sender;
 
-                                      int dm_socket_fd = -1;
+                    int dm_socket_fd = -1;
                     for (int i = 0; i < cantidad_clientes; i++)
                     {
                         if (strcmp(clients[i].username, dm_destination) == 0)
@@ -379,7 +379,8 @@ void *handle_newclient(void *arg)
                             break;
                         }
                     }
-
+                    ChatSistOS__User user_response = CHAT_SIST_OS__USER__INIT;
+                    user_response.user_name = dm_sender;
                     if (dm_socket_fd == -1)
                     {
 
