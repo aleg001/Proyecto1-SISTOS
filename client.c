@@ -97,98 +97,6 @@ void *listen_server(void *arg)
             continue;
         }
 
-        buffer_rx[bytesRecibidos] = '\0';
-
-        iconv_t cd = iconv_open("UTF-8", "ISO-8859-1");
-
-        if (cd == (iconv_t)-1)
-        {
-            perror("iconv_open");
-            exit(1);
-        }
-
-        char buffer_utf8[1024];
-        char *inbuf = (char *)buffer_rx;
-        char *outbuf = buffer_utf8;
-        size_t inbytesleft = bytesRecibidos;
-        size_t outbytesleft = sizeof(buffer_utf8);
-        if (iconv(cd, &inbuf, &inbytesleft, &outbuf, &outbytesleft) == (size_t)-1)
-        {
-            perror("iconv");
-            exit(1);
-        }
-
-        *outbuf = '\0';
-
-        char username[1024] = " ";
-        char message[1024] = " ";
-
-        strncpy(message, buffer_utf8, sizeof(message) - 1);
-
-        char *username_trimmed = username;
-        char *message_trimmed = message;
-        while (isspace(*username_trimmed))
-            username_trimmed++;
-        while (isspace(*message_trimmed))
-            message_trimmed++;
-        int username_len = strlen(username_trimmed);
-        int message_len = strlen(message_trimmed);
-        while (username_len > 0 && isspace(username_trimmed[username_len - 1]))
-            username_trimmed[--username_len] = '\0';
-        while (message_len > 0 && isspace(message_trimmed[message_len - 1]))
-            message_trimmed[--message_len] = '\0';
-
-        char *quote_pos = strchr(message_trimmed, '"');
-        if (quote_pos == NULL)
-        {
-            printf("ERROR: Mensaje recibido no tiene el formato esperado\n");
-            continue;
-        }
-
-        *quote_pos = '\0';
-        char *username_trimmed1 = message_trimmed;
-        char *message_content1 = quote_pos + 1;
-        char *p = message_content1;
-        while (*p != '\0')
-        {
-            if (!isprint(*p) && !isspace(*p))
-            {
-                *p = ' ';
-            }
-            p++;
-        }
-        while (isspace(*username_trimmed1))
-            username_trimmed1++;
-        int add_space = (*message_content1 != '"');
-        if (add_space)
-        {
-            char *quote_pos = strchr(message_content1, '"');
-            if (quote_pos != NULL)
-            {
-                size_t message_len = strlen(quote_pos + 1);
-                printf("\n%s - %s\n", username_trimmed1, message_content1);
-            }
-            else
-            {
-                printf("\n%s - %s\n", username_trimmed1, message_content1);
-            }
-        }
-        else
-        {
-            char *quote_pos = strchr(message_content1, '"');
-            if (quote_pos != NULL)
-            {
-                size_t message_len = strlen(quote_pos + 1);
-                printf("\n%-*s - %.*s\n", (int)strlen(username_trimmed1), username_trimmed1, (int)message_len, quote_pos + 1);
-            }
-            else
-            {
-                printf("\n%s - %s\n", username_trimmed1, message_content1);
-            }
-        }
-
-        iconv_close(cd);
-
         ChatSistOS__Answer *answer = chat_sist_os__answer__unpack(NULL, bytesRecibidos, buffer_rx);
         if (answer == NULL)
         {
@@ -196,22 +104,78 @@ void *listen_server(void *arg)
             continue;
         }
 
-        const char *response_username = "";
-        if (answer->user != NULL && answer->user->user_name != NULL)
+        if (answer->op == 2 && answer->message->message_private == 1)
         {
-            response_username = answer->user->user_name;
+            continue;
+        }
+        else if (answer->op == 2)
+        {
+            printf("[MENSAJE de %s]: %s\n", answer->message->message_sender, answer->message->message_content);
+        }
+        else
+        {
+
+            printf("\n[%s]: %s\n", answer->message->message_sender, answer->message->message_content);
         }
 
-        if (answer->response_message != NULL)
+        chat_sist_os__answer__free_unpacked(answer, NULL);
+    }
+
+    return NULL;
+}
+
+void *dm_function(void *arg)
+{
+    int cliente_fd = *((int *)arg);
+
+    while (1)
+    {
+        printf("Mensaje privado\n\n");
+        printf("Ingrese el nombre del destinatario: ");
+        char input[256];
+        if (fgets(input, sizeof(input), stdin) == NULL)
         {
+            printf("FORMATO INCORRECTO\n");
+            continue;
+        }
+        input[strcspn(input, "\n")] = '\0';
+
+        char *dm_destination = input;
+        printf("Ingrese el mensaje: ");
+        if (fgets(input, sizeof(input), stdin) == NULL)
+        {
+            printf("FORMATO INCORRECTO\n");
+            continue;
+        }
+        input[strcspn(input, "\n")] = '\0';
+
+        ChatSistOS__Message dm_message = CHAT_SIST_OS__MESSAGE__INIT;
+        dm_message.message_private = 1;
+        dm_message.message_destination = dm_destination;
+        dm_message.message_content = strdup(input);
+        dm_message.message_sender = strdup(username);
+
+        ChatSistOS__UserOption option_user = CHAT_SIST_OS__USER_OPTION__INIT;
+        option_user.op = OP_DM;
+        option_user.message = &dm_message;
+
+        size_t serializar = chat_sist_os__user_option__get_packed_size(&option_user);
+        uint8_t *buffer = malloc(serializar);
+        chat_sist_os__user_option__pack(&option_user, buffer);
+
+        if (send(cliente_fd, buffer, serializar, 0) < 0)
+        {
+            ERRORMensaje("ERROR: Envio de mensaje fallido\n");
             continue;
         }
         else
         {
-            printf("ERROR: No se pudo leer el mensaje de respuesta\n");
+            free(buffer);
+            free(dm_message.message_content);
+            free(dm_message.message_sender);
+            printf("[CLIENT]: Mensaje enviado\n");
+            continue;
         }
-
-        chat_sist_os__answer__free_unpacked(answer, NULL);
     }
 
     return NULL;
@@ -388,6 +352,7 @@ int main(int argc, const char **argv)
                 case OP_DM:
                     printf("Mensaje privado\n\n");
                     printf("Ingrese el nombre del destinatario: ");
+                    char input[256];
                     if (fgets(input, sizeof(input), stdin) == NULL)
                     {
                         printf("FORMATO INCORRECTO\n");
@@ -411,7 +376,7 @@ int main(int argc, const char **argv)
                     dm_message.message_sender = strdup(username);
 
                     ChatSistOS__UserOption option_user = CHAT_SIST_OS__USER_OPTION__INIT;
-                    option_user.op = opcion;
+                    option_user.op = OP_DM;
                     option_user.message = &dm_message;
 
                     size_t serializar = chat_sist_os__user_option__get_packed_size(&option_user);
@@ -431,7 +396,6 @@ int main(int argc, const char **argv)
                         printf("[CLIENT]: Mensaje enviado\n");
                         continue;
                     }
-
                 case OP_STATUS:
                     printf("Cambiando status...\n");
 
