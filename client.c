@@ -234,6 +234,7 @@ int main(int argc, const char **argv)
                     printf("ERROR: Ingrese un número válido\n");
                     continue;
                 }
+
                 uint8_t bufferExit = 1;
 
                 ChatSistOS__UserOption option_user = CHAT_SIST_OS__USER_OPTION__INIT;
@@ -296,6 +297,7 @@ int main(int argc, const char **argv)
                 case OP_DM:
                     printf("Mensaje privado\n\n");
                     printf("Ingrese el nombre del destinatario: ");
+
                     char input_dest[256];
                     if (fgets(input_dest, sizeof(input_dest), stdin) == NULL)
                     {
@@ -318,7 +320,6 @@ int main(int argc, const char **argv)
                     dm_message.message_private = 1;
 
                     dm_message.message_destination = strdup(dm_destination);
-
                     dm_message.message_content = strdup(input_msg);
                     dm_message.message_sender = strdup(username);
 
