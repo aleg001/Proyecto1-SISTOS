@@ -14,10 +14,10 @@ La aplicación debe estar separada dos partes:
   - `protoc --c_out=. chat.proto`
   
 - Para compilar el servidor:
-  - `gcc -o server server.c chat.pb-c.c -lprotobuf-c -lpthread`
+  - `gcc -o server server.c chat.pb-c.c -lprotobuf-c -pthread`
   
 - Para compilar el cliente:
-  - `gcc -o client client.c chat.pb-c.c -lprotobuf-c -lpthread`
+  - `gcc -o client client.c chat.pb-c.c -lprotobuf-c -pthread`
   
 - Para ejecutar el servidor
   - `./server 9000` (9000 es el puerto donde se escuchara al cliente)
