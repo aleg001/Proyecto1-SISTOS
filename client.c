@@ -316,7 +316,9 @@ int main(int argc, const char **argv)
 
                     ChatSistOS__Message dm_message = CHAT_SIST_OS__MESSAGE__INIT;
                     dm_message.message_private = 1;
-                    dm_message.message_destination = dm_destination;
+
+                    dm_message.message_destination = strdup(dm_destination);
+
                     dm_message.message_content = strdup(input_msg);
                     dm_message.message_sender = strdup(username);
 
@@ -336,6 +338,7 @@ int main(int argc, const char **argv)
                     else
                     {
                         free(buffer);
+                        free(dm_message.message_destination);
                         free(dm_message.message_content);
                         free(dm_message.message_sender);
                         printf("[CLIENT]: Mensaje enviado\n");

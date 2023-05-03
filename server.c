@@ -339,14 +339,57 @@ void *handle_newclient(void *arg)
                         answer.user = &user_response;
 
                         size_t msg_size = chat_sist_os__answer__get_packed_size(&answer);
-                        uint8_t *msg_buffer = malloc(msg_size);
-                        chat_sist_os__answer__pack(&answer, msg_buffer);
+                        uint8_t *msg_buffer_recipient = malloc(msg_size);
+                        chat_sist_os__answer__pack(&answer, msg_buffer_recipient);
 
-                        if (send(dm_socket_fd, msg_buffer, msg_size, 0) < 0)
+                        if (send(dm_socket_fd, msg_buffer_recipient, msg_size, 0) < 0)
                         {
                             perror("[SERVER-ERROR]: Envio de respuesta fallido\n");
                             exit(EXIT_FAILURE);
                         }
+
+                        uint8_t *msg_buffer_sender = malloc(msg_size);
+                        chat_sist_os__answer__pack(&answer, msg_buffer_sender);
+
+                        if (send(client_socket, msg_buffer_sender, msg_size, 0) < 0)
+                        {
+                            perror("[SERVER-ERROR]: Envio de respuesta fallido\n");
+                            exit(EXIT_FAILURE);
+                        }
+
+                        free(msg_buffer_recipient);
+                        free(msg_buffer_sender);
+                    }
+                }
+                else if (user_option->op == 2)
+                {
+                    printf("[SERVER]: Mensaje privado\n");
+
+                    ChatSistOS__Message *dm_message = user_option->message;
+                    char *dm_destination = dm_message->message_destination;
+                    char *dm_content = dm_message->message_content;
+                    char *dm_sender = dm_message->message_sender;
+
+                                      int dm_socket_fd = -1;
+                    for (int i = 0; i < cantidad_clientes; i++)
+                    {
+                        if (strcmp(clients[i].username, dm_destination) == 0)
+                        {
+                            dm_socket_fd = clients[i].sockfd;
+                            break;
+                        }
+                    }
+
+                    if (dm_socket_fd == -1)
+                    {
+
+                        ChatSistOS__Answer answer = CHAT_SIST_OS__ANSWER__INIT;
+                        answer.op = 2;
+                        answer.response_status_code = 404;
+
+                        size_t msg_size = chat_sist_os__answer__get_packed_size(&answer);
+                        uint8_t *msg_buffer = malloc(msg_size);
+                        chat_sist_os__answer__pack(&answer, msg_buffer);
 
                         if (send(client_socket, msg_buffer, msg_size, 0) < 0)
                         {
@@ -355,6 +398,37 @@ void *handle_newclient(void *arg)
                         }
 
                         free(msg_buffer);
+                    }
+                    else
+                    {
+
+                        ChatSistOS__Answer answer = CHAT_SIST_OS__ANSWER__INIT;
+                        answer.op = 2;
+                        answer.response_status_code = 200;
+                        answer.message = dm_message;
+                        answer.user = &user_response;
+
+                        size_t msg_size = chat_sist_os__answer__get_packed_size(&answer);
+                        uint8_t *msg_buffer_recipient = malloc(msg_size);
+                        chat_sist_os__answer__pack(&answer, msg_buffer_recipient);
+
+                        if (send(dm_socket_fd, msg_buffer_recipient, msg_size, 0) < 0)
+                        {
+                            perror("[SERVER-ERROR]: Envio de respuesta fallido\n");
+                            exit(EXIT_FAILURE);
+                        }
+
+                        uint8_t *msg_buffer_sender = malloc(msg_size);
+                        chat_sist_os__answer__pack(&answer, msg_buffer_sender);
+
+                        if (send(client_socket, msg_buffer_sender, msg_size, 0) < 0)
+                        {
+                            perror("[SERVER-ERROR]: Envio de respuesta fallido\n");
+                            exit(EXIT_FAILURE);
+                        }
+
+                        free(msg_buffer_recipient);
+                        free(msg_buffer_sender);
                     }
                 }
 
