@@ -18,6 +18,7 @@
 #include <time.h>
 #include <sys/select.h>
 #include <signal.h>
+#include <iconv.h>
 
 #define BUFFER_SIZE 1024
 
@@ -63,53 +64,6 @@ void ERRORMensaje(const char *message)
     exit(EXIT_FAILURE);
 }
 
-void *listen_server(void *arg)
-{
-    int cliente_fd = *(int *)arg;
-    uint8_t buffer_rx[1024];
-    ssize_t bytesRecibidos;
-
-    while (1)
-    {
-        bytesRecibidos = recv(cliente_fd, buffer_rx, 1024, 0);
-        if (bytesRecibidos < 0)
-        {
-            ERRORMensaje("[CLIENT-ERROR]: Recepcion de respuesta fallida\n");
-            continue;
-        }
-
-        ChatSistOS__Answer *answer = chat_sist_os__answer__unpack(NULL, bytesRecibidos, buffer_rx);
-        if (answer == NULL)
-        {
-            printf("ERROR: No se pudo desempaquetar el mensaje recibido\n");
-            continue;
-        }
-
-        const char *response_username = "UNKNOWN";
-        if (answer->user != NULL && answer->user->user_name != NULL)
-        {
-            response_username = answer->user->user_name;
-        }
-
-        if (answer->response_message != NULL)
-        {
-            // Imprimir mensaje
-
-            printf("-> ");
-
-            printf("\n");
-        }
-        else
-        {
-            printf("ERROR: No se pudo leer el mensaje de respuesta\n");
-        }
-
-        chat_sist_os__answer__free_unpacked(answer, NULL);
-    }
-
-    return NULL;
-}
-
 void AYUDA()
 {
     const char *comandos[] = {
@@ -126,6 +80,141 @@ void AYUDA()
     {
         printf("- %s\n", comandos[i]);
     }
+}
+
+void *listen_server(void *arg)
+{
+    int cliente_fd = *(int *)arg;
+    uint8_t buffer_rx[1024];
+    ssize_t bytesRecibidos;
+
+    while (1)
+    {
+        bytesRecibidos = recv(cliente_fd, buffer_rx, 1024, 0);
+        if (bytesRecibidos < 0)
+        {
+            ERRORMensaje("[CLIENT-ERROR]: Recepcion de respuesta fallida\n");
+            continue;
+        }
+
+        buffer_rx[bytesRecibidos] = '\0';
+
+        iconv_t cd = iconv_open("UTF-8", "ISO-8859-1");
+
+        if (cd == (iconv_t)-1)
+        {
+            perror("iconv_open");
+            exit(1);
+        }
+
+        char buffer_utf8[1024];
+        char *inbuf = (char *)buffer_rx;
+        char *outbuf = buffer_utf8;
+        size_t inbytesleft = bytesRecibidos;
+        size_t outbytesleft = sizeof(buffer_utf8);
+        if (iconv(cd, &inbuf, &inbytesleft, &outbuf, &outbytesleft) == (size_t)-1)
+        {
+            perror("iconv");
+            exit(1);
+        }
+
+        *outbuf = '\0';
+
+        char username[1024] = " ";
+        char message[1024] = " ";
+
+        strncpy(message, buffer_utf8, sizeof(message) - 1);
+
+        char *username_trimmed = username;
+        char *message_trimmed = message;
+        while (isspace(*username_trimmed))
+            username_trimmed++;
+        while (isspace(*message_trimmed))
+            message_trimmed++;
+        int username_len = strlen(username_trimmed);
+        int message_len = strlen(message_trimmed);
+        while (username_len > 0 && isspace(username_trimmed[username_len - 1]))
+            username_trimmed[--username_len] = '\0';
+        while (message_len > 0 && isspace(message_trimmed[message_len - 1]))
+            message_trimmed[--message_len] = '\0';
+
+        char *quote_pos = strchr(message_trimmed, '"');
+        if (quote_pos == NULL)
+        {
+            printf("ERROR: Mensaje recibido no tiene el formato esperado\n");
+            continue;
+        }
+
+        *quote_pos = '\0';
+        char *username_trimmed1 = message_trimmed;
+        char *message_content1 = quote_pos + 1;
+        char *p = message_content1;
+        while (*p != '\0')
+        {
+            if (!isprint(*p) && !isspace(*p))
+            {
+                *p = ' ';
+            }
+            p++;
+        }
+        while (isspace(*username_trimmed1))
+            username_trimmed1++;
+        int add_space = (*message_content1 != '"');
+        if (add_space)
+        {
+            char *quote_pos = strchr(message_content1, '"');
+            if (quote_pos != NULL)
+            {
+                size_t message_len = strlen(quote_pos + 1);
+                printf("\n%s - %s\n", username_trimmed1, message_content1);
+            }
+            else
+            {
+                printf("\n%s - %s\n", username_trimmed1, message_content1);
+            }
+        }
+        else
+        {
+            char *quote_pos = strchr(message_content1, '"');
+            if (quote_pos != NULL)
+            {
+                size_t message_len = strlen(quote_pos + 1);
+                printf("\n%-*s - %.*s\n", (int)strlen(username_trimmed1), username_trimmed1, (int)message_len, quote_pos + 1);
+            }
+            else
+            {
+                printf("\n%s - %s\n", username_trimmed1, message_content1);
+            }
+        }
+
+        iconv_close(cd);
+
+        ChatSistOS__Answer *answer = chat_sist_os__answer__unpack(NULL, bytesRecibidos, buffer_rx);
+        if (answer == NULL)
+        {
+            printf("ERROR: No se pudo desempaquetar el mensaje recibido\n");
+            continue;
+        }
+
+        const char *response_username = "";
+        if (answer->user != NULL && answer->user->user_name != NULL)
+        {
+            response_username = answer->user->user_name;
+        }
+
+        if (answer->response_message != NULL)
+        {
+            continue;
+        }
+        else
+        {
+            printf("ERROR: No se pudo leer el mensaje de respuesta\n");
+        }
+
+        chat_sist_os__answer__free_unpacked(answer, NULL);
+    }
+
+    return NULL;
 }
 
 int main(int argc, const char **argv)
@@ -217,36 +306,6 @@ int main(int argc, const char **argv)
             while (veri)
             {
 
-                // MENU();
-                // printf("Ingrese comando: ");
-                // fflush(stdout);
-
-                // fd_set read_fds;
-                // FD_ZERO(&read_fds);
-                // FD_SET(STDIN_FILENO, &read_fds);
-
-                // struct timeval timeout;
-                // timeout.tv_sec = 15;  // Tiempo de espera en segundos
-                // timeout.tv_usec = 0;
-
-                // int res = select(STDIN_FILENO + 1, &read_fds, NULL, NULL, &timeout);
-                // if (res == 0) {
-                //     // Timeout alcanzado
-                //     printf("\nInactivo\n");
-                //     continue;
-                // }
-                // else if (FD_ISSET(STDIN_FILENO, &read_fds)) {
-                //     // Entrada de usuario disponible
-                //     if (fgets(input, sizeof(input), stdin) == NULL) {
-                //         // En caso de error en la entrada, continuar el ciclo
-                //         continue;
-                //     }
-                //     input[strcspn(input, "\r\n")] = '\0';
-                //     if (strlen(input) == 0) {
-                //         continue;
-                //     }
-                // }
-
                 MENU();
                 char chat_input[BUFFER_SIZE];
                 printf("\nIngrese comando: ");
@@ -298,6 +357,7 @@ int main(int argc, const char **argv)
 
                     ChatSistOS__Message chat_message = CHAT_SIST_OS__MESSAGE__INIT;
                     chat_message.message_private = 0;
+
                     chat_message.message_content = strdup(input);
                     chat_message.message_sender = strdup(username);
 
