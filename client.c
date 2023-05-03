@@ -101,65 +101,67 @@ void *listen_server(void *arg)
 
         switch (answer)
         {
-            case 1:
-                printf("[SERVER]: Mensaje de: %s\n", answer_server->message->message_sender);
-                printf("[SERVER]: Contenido: %s\n", answer_server->message->message_content);
-                printf("[SERVER]: Destino: Usuarios conectados\n");
-                break;
-            case 2:
-                if (answer_server->response_status_code != 400){
-                    printf("[SERVER (%d)]->[%s] mensaje para [%s]: %s\n", answer_server->response_status_code, answer_server->message->message_sender, answer_server->message->message_destination, answer_server->message->message_content);
-                } else {
-                    printf("[SERVER (%d)]->[%s]: %s\n", answer_server->response_status_code, answer_server->message->message_sender, answer_server->response_message);
-                }
-                break;
-            case 3:
-                printf("[SERVER (%d)]->[%s]: %s\n", answer_server->response_status_code, answer_server->user->user_name, answer_server->response_message);
-                break;
-            case 4:
-                printf("[SERVER (%d)]: %s\n", answer_server->response_status_code, answer_server->response_message);
+        case 1:
 
-                printf("\nLista de usuarios conectados\n");
-                for (int i = 0; i < answer_server->users_online->n_users; i++)
-                {
-                    ChatSistOS__User *user = answer_server->users_online->users[i];
-                    char status[25] = "Estado desconocido";
-                    if (user->user_state == 1)
-                    {
-                        strcpy(status, "En linea");
-                    }
-                    else if (user->user_state == 2)
-                    {
-                        strcpy(status, "Ocupado");
-                    }
-                    else if (user->user_state == 3)
-                    {
-                        strcpy(status, "Desconectado");
-                    }
-                    printf("- Usuario: %s con ip (%s) -> status: (%s)\n", user->user_name, user->user_ip, status);
-                }
-                printf("\n");
-                break;
-            case 5:
-                if (answer_server->response_status_code != 400)
-                {
-                    printf("[SERVER]: %s | IP: %s\n", answer_server->response_message, answer_server->user->user_ip);
-                }
-                else
-                {
-                    printf("[SERVER]: %s\n", answer_server->response_message);
-                }
-                break;
+            printf("[%s]: %s\n", answer_server->message->message_sender, answer_server->message->message_content);
+            break;
+        case 2:
+            if (answer_server->response_status_code != 400)
+            {
+                printf("[SERVER (%d)]->[%s] mensaje para [%s]: %s\n", answer_server->response_status_code, answer_server->message->message_sender, answer_server->message->message_destination, answer_server->message->message_content);
+            }
+            else
+            {
+                printf("[SERVER (%d)]->[%s]: %s\n", answer_server->response_status_code, answer_server->message->message_sender, answer_server->response_message);
+            }
+            break;
+        case 3:
+            printf("[SERVER (%d)]->[%s]: %s\n", answer_server->response_status_code, answer_server->user->user_name, answer_server->response_message);
+            break;
+        case 4:
+            printf("[SERVER (%d)]: %s\n", answer_server->response_status_code, answer_server->response_message);
 
-            case 6:
-                break;
+            printf("\nLista de usuarios conectados\n");
+            for (int i = 0; i < answer_server->users_online->n_users; i++)
+            {
+                ChatSistOS__User *user = answer_server->users_online->users[i];
+                char status[25] = "Estado desconocido";
+                if (user->user_state == 1)
+                {
+                    strcpy(status, "En linea");
+                }
+                else if (user->user_state == 2)
+                {
+                    strcpy(status, "Ocupado");
+                }
+                else if (user->user_state == 3)
+                {
+                    strcpy(status, "Desconectado");
+                }
+                printf("- Usuario: %s con ip (%s) -> status: (%s)\n", user->user_name, user->user_ip, status);
+            }
+            printf("\n");
+            break;
+        case 5:
+            if (answer_server->response_status_code != 400)
+            {
+                printf("[SERVER]: %s | IP: %s\n", answer_server->response_message, answer_server->user->user_ip);
+            }
+            else
+            {
+                printf("[SERVER]: %s\n", answer_server->response_message);
+            }
+            break;
 
-            case 7:
-                break;
-            
-            default:
-                printf("Opcion INVALIDA, selecciona la veri help (6) para ayuda\n");
-                break;
+        case 6:
+            break;
+
+        case 7:
+            break;
+
+        default:
+            printf("Opcion INVALIDA, selecciona la veri help (6) para ayuda\n");
+            break;
         }
         MENU();
         printf("Ingrese comando: \n");
@@ -258,13 +260,13 @@ int main(int argc, const char **argv)
         }
 
         int veri = 0;
-        while(veri != 7)
+        while (veri != 7)
         {
 
             MENU();
             printf("Ingrese comando: \n");
             scanf("%d", &veri);
-            
+
             switch (veri)
             {
             case OP_CHAT:
