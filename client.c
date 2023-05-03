@@ -124,63 +124,6 @@ void *listen_server(void *arg)
     return NULL;
 }
 
-void *dm_function(void *arg)
-{
-    int cliente_fd = *((int *)arg);
-
-    while (1)
-    {
-        printf("Mensaje privado\n\n");
-        printf("Ingrese el nombre del destinatario: ");
-        char input[256];
-        if (fgets(input, sizeof(input), stdin) == NULL)
-        {
-            printf("FORMATO INCORRECTO\n");
-            continue;
-        }
-        input[strcspn(input, "\n")] = '\0';
-
-        char *dm_destination = input;
-        printf("Ingrese el mensaje: ");
-        if (fgets(input, sizeof(input), stdin) == NULL)
-        {
-            printf("FORMATO INCORRECTO\n");
-            continue;
-        }
-        input[strcspn(input, "\n")] = '\0';
-
-        ChatSistOS__Message dm_message = CHAT_SIST_OS__MESSAGE__INIT;
-        dm_message.message_private = 1;
-        dm_message.message_destination = dm_destination;
-        dm_message.message_content = strdup(input);
-        dm_message.message_sender = strdup(username);
-
-        ChatSistOS__UserOption option_user = CHAT_SIST_OS__USER_OPTION__INIT;
-        option_user.op = OP_DM;
-        option_user.message = &dm_message;
-
-        size_t serializar = chat_sist_os__user_option__get_packed_size(&option_user);
-        uint8_t *buffer = malloc(serializar);
-        chat_sist_os__user_option__pack(&option_user, buffer);
-
-        if (send(cliente_fd, buffer, serializar, 0) < 0)
-        {
-            ERRORMensaje("ERROR: Envio de mensaje fallido\n");
-            continue;
-        }
-        else
-        {
-            free(buffer);
-            free(dm_message.message_content);
-            free(dm_message.message_sender);
-            printf("[CLIENT]: Mensaje enviado\n");
-            continue;
-        }
-    }
-
-    return NULL;
-}
-
 int main(int argc, const char **argv)
 {
 
@@ -263,6 +206,7 @@ int main(int argc, const char **argv)
 
         if (answer->response_status_code != 400)
         {
+            // Multithreading para broadcast y dm
             pthread_t listen_thread;
             pthread_create(&listen_thread, NULL, listen_server, &cliente_fd);
 
@@ -352,31 +296,32 @@ int main(int argc, const char **argv)
                 case OP_DM:
                     printf("Mensaje privado\n\n");
                     printf("Ingrese el nombre del destinatario: ");
-                    char input[256];
-                    if (fgets(input, sizeof(input), stdin) == NULL)
+                    char input_dest[256];
+                    if (fgets(input_dest, sizeof(input_dest), stdin) == NULL)
                     {
                         printf("FORMATO INCORRECTO\n");
                         continue;
                     }
-                    input[strcspn(input, "\n")] = '\0';
+                    input_dest[strcspn(input_dest, "\n")] = '\0';
 
-                    char *dm_destination = input;
+                    char *dm_destination = input_dest;
                     printf("Ingrese el mensaje: ");
-                    if (fgets(input, sizeof(input), stdin) == NULL)
+                    char input_msg[256];
+                    if (fgets(input_msg, sizeof(input_msg), stdin) == NULL)
                     {
                         printf("FORMATO INCORRECTO\n");
                         continue;
                     }
-                    input[strcspn(input, "\n")] = '\0';
+                    input_msg[strcspn(input_msg, "\n")] = '\0';
 
                     ChatSistOS__Message dm_message = CHAT_SIST_OS__MESSAGE__INIT;
                     dm_message.message_private = 1;
                     dm_message.message_destination = dm_destination;
-                    dm_message.message_content = strdup(input);
+                    dm_message.message_content = strdup(input_msg);
                     dm_message.message_sender = strdup(username);
 
                     ChatSistOS__UserOption option_user = CHAT_SIST_OS__USER_OPTION__INIT;
-                    option_user.op = OP_DM;
+                    option_user.op = opcion;
                     option_user.message = &dm_message;
 
                     size_t serializar = chat_sist_os__user_option__get_packed_size(&option_user);
@@ -396,6 +341,7 @@ int main(int argc, const char **argv)
                         printf("[CLIENT]: Mensaje enviado\n");
                         continue;
                     }
+
                 case OP_STATUS:
                     printf("Cambiando status...\n");
 
