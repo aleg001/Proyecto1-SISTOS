@@ -29,6 +29,7 @@
 #define OP_USUARIO 5
 #define OP_HELP 6
 #define OP_EXIT 7
+#define OP_SERVER_CLOSED 8
 
 int client_socket;
 char *username;
@@ -39,6 +40,8 @@ int state;
 char connected_users;
 char user_information[BUFFER_SIZE];
 char input[BUFFER_SIZE];
+
+int running = 1;
 
 void MENU()
 {
@@ -96,14 +99,21 @@ void *listen_server(void *arg)
             continue;
         }
 
+        if (bytesRecibidos_server == 0)
+        {
+            printf("[CLIENT]: El servidor ha cerrado la conexion\n");
+            running = 0;
+            exit(0);
+            break;
+        }
+
         ChatSistOS__Answer *answer_server = chat_sist_os__answer__unpack(NULL, bytesRecibidos_server, buffer_rx_server);
         int answer = answer_server->op;
 
         switch (answer)
         {
         case 1:
-
-            printf("[%s]: %s\n", answer_server->message->message_sender, answer_server->message->message_content);
+            printf("\n[%s]: %s\n", answer_server->message->message_sender, answer_server->message->message_content);
             break;
         case 2:
             if (answer_server->response_status_code != 400)
@@ -236,10 +246,13 @@ int main(int argc, const char **argv)
         free(buffer_tx);
 
         uint8_t buffer_rx[1024];
+
         ssize_t bytesRecibidos = recv(cliente_fd, buffer_rx, 1024, 0);
         if (bytesRecibidos < 0)
         {
             ERRORMensaje("[CLIENT-ERROR]: Recepcion de respuesta fallida\n");
+            close(cliente_fd);
+            return -1;
         }
 
         // Se obtiene el mensaje del servidor
@@ -260,7 +273,7 @@ int main(int argc, const char **argv)
         }
 
         int veri = 0;
-        while (veri != 7)
+        while (running && veri != 7)
         {
 
             MENU();
@@ -421,13 +434,16 @@ int main(int argc, const char **argv)
                 printf("Saliendo y liberando recursos...\n\n");
                 close(cliente_fd);
                 break;
+
             default:
+
                 printf("Opcion INVALIDA, selecciona la veri help (6) para ayuda\n");
                 break;
             }
         }
         chat_sist_os__answer__free_unpacked(answer, NULL);
         close(client_socket);
+        return 0;
     }
     else
     {
