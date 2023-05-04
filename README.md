@@ -8,8 +8,11 @@ La aplicación debe estar separada dos partes:
 
 ## Comandos a utilizar
 - Necesario instalar (Sirven para compilar los archivos utilizados):
+  - `sudo apt-get update`
   - `sudo apt-get install libcurl4-openssl-dev`
   - `sudo apt-get install protobuf-c-compiler libprotobuf-c-dev`
+  - `sudo apt-get install protobuf-compiler`
+  - `sudo apt-get install build-essential`
 - Para compilar el archivo .proto:
   - `protoc --c_out=. chat.proto`
   
